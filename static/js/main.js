@@ -403,21 +403,11 @@ function displayResults(data) {
         if (data.main_dendrogram) {
             document.getElementById('mainDendrogramPlot').innerHTML = `
                 <img src="${data.main_dendrogram}" class="chart-image" alt="Hierarchical clustering dendrogram" onclick="openChartFullscreen(this)">
-                <div class="chart-controls">
-                    <button class="chart-btn" onclick="openChartFullscreen(this.previousElementSibling.previousElementSibling)" aria-label="View dendrogram in fullscreen">
-                        <i class="fas fa-expand"></i> Fullscreen
-                    </button>
-                </div>
             `;
         }
         if (data.url_analysis) {
             document.getElementById('urlAnalysisPlot').innerHTML = `
                 <img src="${data.url_analysis}" class="chart-image" alt="URL cluster pattern analysis" onclick="openChartFullscreen(this)">
-                <div class="chart-controls">
-                    <button class="chart-btn" onclick="openChartFullscreen(this.previousElementSibling.previousElementSibling)" aria-label="View analysis chart in fullscreen">
-                        <i class="fas fa-expand"></i> Fullscreen
-                    </button>
-                </div>
             `;
         }
         
