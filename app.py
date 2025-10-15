@@ -665,7 +665,23 @@ def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
         ax.set_xlabel('Cluster ID', fontsize=14, color='white')  # Increased font size
         ax.set_ylabel('Number of Samples', fontsize=14, color='white')  # Increased font size
         ax.set_xticks(range(len(clusters_sorted)))
-        ax.set_xticklabels(clusters_sorted, fontsize=12, color='white')  # Increased font size for tick labels
+
+        # Handle crowded x-axis labels by showing every nth label
+        n_clusters = len(clusters_sorted)
+        if n_clusters > 20:  # If more than 20 clusters, reduce label density
+            step = max(1, n_clusters // 10)  # Show about 10 labels maximum
+            visible_indices = list(range(0, n_clusters, step))
+            visible_labels = [str(clusters_sorted[i]) if i < n_clusters else '' for i in visible_indices]
+
+            # Create full range of positions but only show some labels
+            ax.set_xticks(range(n_clusters))
+            ax.set_xticklabels([''] * n_clusters)  # Clear all labels first
+            for i, label in zip(visible_indices, visible_labels):
+                ax.text(i, -0.05, label, ha='center', va='top',
+                       fontsize=10, color='white', rotation=45,
+                       transform=ax.get_xaxis_transform())
+        else:
+            ax.set_xticklabels(clusters_sorted, fontsize=12, color='white')
         ax.tick_params(axis='y', labelsize=12, colors='white')  # Increased font size for y-axis tick labels
         ax.grid(True, alpha=0.3, color=(1.0, 1.0, 1.0, 0.3))
         
