@@ -373,6 +373,7 @@ function displayResults(data) {
             const domain = extractDomain(nn.url);
             const faviconLetter = getFaviconLetter(domain);
             const formattedURL = formatURLDisplay(nn.url);
+            // Distance is now normalized (0-1), so similarity = 1 - distance
             const similarity = (1 - nn.distance).toFixed(3);
             const similarityPercent = ((1 - nn.distance) * 100).toFixed(1);
             

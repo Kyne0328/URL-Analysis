@@ -295,7 +295,7 @@ def train_hierarchical_model():
                 cluster_purity[c] = purity
                 
                 # Only assign labels to clusters with high purity (80%+)
-                if purity >= 0.8:  # 80% purity threshold
+                if purity >= 0.7:  # 80% purity threshold
                     majority_label = label_counts.index[0]
                     cluster_map[c] = "suspicious_pattern" if majority_label == "phishing" else "normal_pattern"
                 else:
@@ -434,6 +434,22 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
     fig.patch.set_facecolor('#0f0f0f')
     plt.gca().set_facecolor('#0f0f0f')
 
+    # Calculate optimal threshold for visualization that creates multiple colored clusters
+    if color_threshold is None:
+        distances = linkage_matrix[:, 2]
+
+        # For truncated dendrogram (lastp, p=30), we need to consider the visible merges
+        # The last 30 merges represent the highest-level clustering structure
+        if truncate_mode == 'lastp' and p == 30:
+            # Use a threshold that splits the visible top-level merges into multiple color groups
+            # The last 30 distances range from ~65 to ~3000, so we want a threshold in this range
+            last_30_distances = distances[-30:]
+            # Use a threshold that creates 4-6 color groups in the visible portion
+            color_threshold = np.percentile(last_30_distances, 60)  # 60th percentile of visible merges
+        else:
+            # For full dendrogram, use a threshold that shows hierarchical structure
+            color_threshold = np.percentile(distances, 90)
+
     # Create dendrogram
     dendro = dendrogram(
         linkage_matrix,
@@ -448,7 +464,10 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
     plt.title('Hierarchical Clustering Dendrogram', fontsize=18, fontweight='bold', color='white')  # Increased from 16
     plt.xlabel('Sample Index or (cluster size)', fontsize=14, color='white')  # Increased from 12
     plt.ylabel('Distance', fontsize=14, color='white')  # Increased from 12
-    plt.axhline(y=10, color="#667eea", linestyle="--", label='Distance Threshold (t=10)')
+
+    # Draw threshold line with calculated optimal threshold
+    plt.axhline(y=color_threshold, color="#667eea", linestyle="--",
+                label=f'Distance Threshold (t={color_threshold:.1f})')
     plt.grid(True, alpha=0.3, color=(1.0, 1.0, 1.0, 0.3))
 
     # Set tick colors to white for visibility
@@ -553,16 +572,21 @@ def find_url_position_in_dendrogram(url):
         distances_to_all = np.linalg.norm(X_scaled - X_new_scaled, axis=1)
         nearest_indices = np.argsort(distances_to_all)[:NEAREST_NEIGHBORS_COUNT]  # Use configurable count
         
+        # Normalize distances for similarity calculation (0-1 range)
+        # Use sigmoid normalization to convert distances to similarity scores
+        max_reasonable_distance = 5.0  # Based on typical Euclidean distances in scaled feature space
+        normalized_distances = 1 / (1 + np.exp(distances_to_all / max_reasonable_distance))
+
         nearest_neighbors = []
         for i in nearest_indices:
             neighbor_cluster = clusters[i]
             neighbor_label = labels[i] if i < len(labels) else 'unknown'
             neighbor_url = urls[i] if i < len(urls) else 'unknown'
-            
+
             nearest_neighbors.append({
                 'url': neighbor_url,
                 'label': neighbor_label,
-                'distance': float(distances_to_all[i]),
+                'distance': float(normalized_distances[i]),  # Send normalized distance (0-1)
                 'cluster': int(neighbor_cluster)
             })
         
@@ -580,8 +604,8 @@ def find_url_position_in_dendrogram(url):
         if len(nearest_neighbors) > 0:
             neighbor_distances = [n['distance'] for n in nearest_neighbors]
             avg_neighbor_distance = np.mean(neighbor_distances)
-            # Lower average distance = higher confidence
-            neighbor_confidence = max(0, 1 - (avg_neighbor_distance / 3.0))
+            # Distance is now normalized (0-1), so confidence = average similarity = 1 - avg_distance
+            neighbor_confidence = max(0, 1 - avg_neighbor_distance)
         
         return {
             'url': url,
