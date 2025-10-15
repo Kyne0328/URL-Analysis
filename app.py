@@ -425,11 +425,15 @@ def train_hierarchical_model():
         print(f"Error training model: {e}")
         return False
 
-def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None, 
+def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
                            leaf_rotation=90, figsize=(12, 8), dpi=150):
-    """Create dendrogram figure"""
+    """Create dendrogram figure with dark theme"""
     fig = plt.figure(figsize=figsize, dpi=dpi)
-    
+
+    # Set dark theme background matching site design
+    fig.patch.set_facecolor('#0f0f0f')
+    plt.gca().set_facecolor('#0f0f0f')
+
     # Create dendrogram
     dendro = dendrogram(
         linkage_matrix,
@@ -440,21 +444,26 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
         leaf_font_size=12,  # Increased from 8
         show_contracted=True
     )
-    
-    plt.title('Hierarchical Clustering Dendrogram', fontsize=18, fontweight='bold')  # Increased from 16
-    plt.xlabel('Sample Index or (cluster size)', fontsize=14)  # Increased from 12
-    plt.ylabel('Distance', fontsize=14)  # Increased from 12
-    plt.axhline(y=10, color="r", linestyle="--", label='Distance Threshold (t=10)')
-    plt.grid(True, alpha=0.3)
+
+    plt.title('Hierarchical Clustering Dendrogram', fontsize=18, fontweight='bold', color='white')  # Increased from 16
+    plt.xlabel('Sample Index or (cluster size)', fontsize=14, color='white')  # Increased from 12
+    plt.ylabel('Distance', fontsize=14, color='white')  # Increased from 12
+    plt.axhline(y=10, color="#667eea", linestyle="--", label='Distance Threshold (t=10)')
+    plt.grid(True, alpha=0.3, color=(1.0, 1.0, 1.0, 0.3))
+
+    # Set tick colors to white for visibility
+    plt.tick_params(colors='white')
+    plt.gca().tick_params(colors='white')
     
     # Add color legend
     colors = ['red', 'green', 'blue', 'orange', 'purple', 'brown', 'pink', 'gray']
     legend_elements = []
     for i, color in enumerate(colors[:len(set(dendro['color_list']))]):
         legend_elements.append(plt.Line2D([0], [0], color=color, lw=2, label=f'Cluster {i+1}'))
-    
+
     if legend_elements:
-        plt.legend(handles=legend_elements, loc='upper right', fontsize=12)  # Increased font size
+        legend = plt.legend(handles=legend_elements, loc='upper right', fontsize=12, facecolor='#0f0f0f', edgecolor=(1.0, 1.0, 1.0, 0.3))  # Increased font size
+        plt.setp(legend.get_texts(), color='white')
     
     return fig
 
@@ -602,7 +611,11 @@ def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
     """Create a comprehensive analysis showing where URL fits in the clustering tree"""
     try:
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-        
+
+        # Set dark theme background matching site design
+        fig.patch.set_facecolor('#0f0f0f')
+        ax.set_facecolor('#0f0f0f')
+
         # Get URL analysis
         url_info = find_url_position_in_dendrogram(url)
         
@@ -648,18 +661,18 @@ def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
             bars[cluster_idx].set_linewidth(3)
             bars[cluster_idx].set_alpha(1.0)
         
-        ax.set_title(f'URL Pattern Analysis: {url[:50]}...\nPattern Group: {prediction} | Similarity: {confidence:.2f} | Cluster: {cluster_id}', fontsize=16, fontweight='bold')  # Increased font size
-        ax.set_xlabel('Cluster ID', fontsize=14)  # Increased font size
-        ax.set_ylabel('Number of Samples', fontsize=14)  # Increased font size
+        ax.set_title(f'URL Pattern Analysis: {url[:50]}...\nPattern Group: {prediction} | Similarity: {confidence:.2f} | Cluster: {cluster_id}', fontsize=16, fontweight='bold', color='white')  # Increased font size
+        ax.set_xlabel('Cluster ID', fontsize=14, color='white')  # Increased font size
+        ax.set_ylabel('Number of Samples', fontsize=14, color='white')  # Increased font size
         ax.set_xticks(range(len(clusters_sorted)))
-        ax.set_xticklabels(clusters_sorted, fontsize=12)  # Increased font size for tick labels
-        ax.tick_params(axis='y', labelsize=12)  # Increased font size for y-axis tick labels
-        ax.grid(True, alpha=0.3)
+        ax.set_xticklabels(clusters_sorted, fontsize=12, color='white')  # Increased font size for tick labels
+        ax.tick_params(axis='y', labelsize=12, colors='white')  # Increased font size for y-axis tick labels
+        ax.grid(True, alpha=0.3, color=(1.0, 1.0, 1.0, 0.3))
         
         # Add text annotation
-        ax.text(0.02, 0.98, f'URL: {url}\nPattern Group: {prediction}\nSimilarity: {confidence:.2f}\nCluster: {cluster_id}\nDistance: {distance:.3f}', 
-                transform=ax.transAxes, fontsize=14,  # Increased from 10
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8),
+        ax.text(0.02, 0.98, f'URL: {url}\nPattern Group: {prediction}\nSimilarity: {confidence:.2f}\nCluster: {cluster_id}\nDistance: {distance:.3f}',
+                transform=ax.transAxes, fontsize=14, color='white',  # Increased from 10
+                bbox=dict(boxstyle="round,pad=0.3", facecolor=(0.4, 0.494, 0.918, 0.2), edgecolor=(0.4, 0.494, 0.918, 0.4), alpha=0.8),
                 verticalalignment='top')
         
         # Add legend
@@ -669,17 +682,21 @@ def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
             plt.Rectangle((0,0),1,1, facecolor='gray', alpha=0.7, label='Unknown Pattern Groups'),
             plt.Rectangle((0,0),1,1, facecolor='blue', alpha=1.0, label='URL Pattern Group')
         ]
-        ax.legend(handles=legend_elements, loc='upper right', fontsize=12)  # Increased font size
+        legend = ax.legend(handles=legend_elements, loc='upper right', fontsize=12, facecolor='#0f0f0f', edgecolor=(1.0, 1.0, 1.0, 0.3))  # Increased font size
+        plt.setp(legend.get_texts(), color='white')
         
         return fig
         
     except Exception as e:
         print(f"Error creating URL cluster analysis: {e}")
-        # Fallback to simple plot
+        # Fallback to simple plot with dark theme
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-        ax.text(0.5, 0.5, f'URL Analysis Error\n{str(e)}', 
-                ha='center', va='center', transform=ax.transAxes)
-        ax.set_title('URL Cluster Analysis')
+        fig.patch.set_facecolor('#0f0f0f')
+        ax.set_facecolor('#0f0f0f')
+        ax.text(0.5, 0.5, f'URL Analysis Error\n{str(e)}',
+                ha='center', va='center', transform=ax.transAxes, color='white', fontsize=14)
+        ax.set_title('URL Cluster Analysis', color='white')
+        ax.tick_params(colors='white')
         return fig
 
 def figure_to_base64(fig):
