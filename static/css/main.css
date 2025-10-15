@@ -568,7 +568,7 @@ body {
     background: rgba(0, 0, 0, 0.95);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding: 40px 20px;
-    margin-top: 80px;
+    margin-top: 0;
 }
 
 .footer-content {
@@ -1812,7 +1812,7 @@ a:focus-visible,
 
 .education-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 30px;
     margin-bottom: 60px;
 }
@@ -1907,7 +1907,7 @@ a:focus-visible,
 }
 
 /* Clustering Comparison Styles */
-.clustering-comparison {
+.clustering-focus {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 15px;
@@ -1916,7 +1916,7 @@ a:focus-visible,
     backdrop-filter: blur(10px);
 }
 
-.clustering-comparison h3 {
+.clustering-focus h3 {
     font-size: 2rem;
     font-weight: 600;
     color: #e0e0e0;
@@ -1924,120 +1924,176 @@ a:focus-visible,
     text-align: center;
 }
 
-.comparison-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 30px;
+.focus-content {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
 }
 
-.comparison-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+.focus-highlight {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.2);
     border-radius: 12px;
     padding: 25px;
-    transition: all 0.3s ease;
+    text-align: center;
 }
 
-.comparison-card:hover {
-    border-color: rgba(102, 126, 234, 0.3);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.1);
-}
-
-.comparison-card h4 {
+.focus-highlight h4 {
     font-size: 1.4rem;
     font-weight: 600;
     color: #e0e0e0;
-    margin-bottom: 20px;
-    text-align: center;
+    margin-bottom: 15px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-.pros-cons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.pros, .cons {
-    padding: 15px;
-    border-radius: 8px;
-}
-
-.pros {
-    background: rgba(72, 187, 120, 0.1);
-    border: 1px solid rgba(72, 187, 120, 0.2);
-}
-
-.cons {
-    background: rgba(245, 101, 101, 0.1);
-    border: 1px solid rgba(245, 101, 101, 0.2);
-}
-
-.pros h5, .cons h5 {
+.focus-highlight p {
+    color: #c0c0c0;
     font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 12px;
-}
-
-.pros h5 {
-    color: #48bb78;
-}
-
-.cons h5 {
-    color: #f56565;
-}
-
-.pros ul, .cons ul {
-    list-style: none;
-    padding: 0;
+    line-height: 1.6;
     margin: 0;
 }
 
-.pros li, .cons li {
+.advantages-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+}
+
+.advantage-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.advantage-card:hover {
+    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+}
+
+.advantage-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.advantage-card h5 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 12px;
+}
+
+.advantage-card p {
     color: #c0c0c0;
-    margin-bottom: 8px;
-    padding-left: 20px;
-    position: relative;
-    line-height: 1.4;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.method-explanation {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 30px;
+}
+
+.method-explanation h4 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.workflow-steps {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.step {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.step-number {
+    width: 35px;
+    height: 35px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.step-content h6 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin: 0 0 8px 0;
+}
+
+.step-content p {
+    color: #c0c0c0;
     font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 0;
 }
 
-.pros li::before {
-    content: "✓";
-    position: absolute;
-    left: 0;
-    color: #48bb78;
-    font-weight: bold;
-}
-
-.cons li::before {
-    content: "✗";
-    position: absolute;
-    left: 0;
-    color: #f56565;
-    font-weight: bold;
-}
-
-/* Responsive Design for Comparison */
+/* Responsive Design for Clustering Focus */
 @media (max-width: 768px) {
-    .clustering-comparison {
+    .clustering-focus {
         padding: 30px 20px;
     }
-    
-    .comparison-grid {
+
+    .advantages-grid {
         grid-template-columns: 1fr;
         gap: 20px;
     }
-    
-    .pros-cons {
+
+    .workflow-steps {
         grid-template-columns: 1fr;
         gap: 15px;
     }
-    
-    .comparison-card {
+
+    .advantage-card {
         padding: 20px;
+    }
+
+    .method-explanation {
+        padding: 20px;
+    }
+
+    .step {
+        padding: 15px;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .step-number {
+        align-self: center;
     }
 }

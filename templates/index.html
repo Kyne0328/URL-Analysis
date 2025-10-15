@@ -256,53 +256,78 @@
             </div>
             
             
-            <div class="clustering-comparison">
-                <h3><i class="fas fa-balance-scale"></i> Clustering Methods Comparison</h3>
-                <div class="comparison-grid">
-                    <div class="comparison-card">
-                        <h4>Hierarchical Clustering</h4>
-                        <div class="pros-cons">
-                            <div class="pros">
-                                <h5>✅ Advantages</h5>
-                                <ul>
-                                    <li>No need to specify number of clusters</li>
-                                    <li>Creates interpretable dendrogram</li>
-                                    <li>Works well with small to medium datasets</li>
-                                    <li>Deterministic results</li>
-                                </ul>
+            <div class="clustering-focus">
+                <h3><i class="fas fa-project-diagram"></i> Why Hierarchical Clustering for URL Analysis?</h3>
+                <div class="focus-content">
+                    <div class="focus-highlight">
+                        <h4>Perfect for Pattern Discovery</h4>
+                        <p>Hierarchical clustering is ideal for URL analysis because it reveals the complete relationship structure between similar URLs, showing not just which URLs belong together, but <em>how closely</em> they are related at different similarity levels.</p>
+                    </div>
+
+                    <div class="advantages-grid">
+                        <div class="advantage-card">
+                            <div class="advantage-icon">
+                                <i class="fas fa-tree"></i>
                             </div>
-                            <div class="cons">
-                                <h5>❌ Disadvantages</h5>
-                                <ul>
-                                    <li>Computationally expensive O(n³)</li>
-                                    <li>Memory intensive for large datasets</li>
-                                    <li>Sensitive to noise and outliers</li>
-                                    <li>Cannot undo previous merges</li>
-                                </ul>
+                            <h5>Complete Hierarchy</h5>
+                            <p>Shows the full clustering tree (dendrogram) revealing how URL patterns merge at different similarity levels</p>
+                        </div>
+
+                        <div class="advantage-card">
+                            <div class="advantage-icon">
+                                <i class="fas fa-search"></i>
                             </div>
+                            <h5>No Pre-defined Clusters</h5>
+                            <p>Discovers the natural number of URL pattern groups without guessing how many clusters exist</p>
+                        </div>
+
+                        <div class="advantage-card">
+                            <div class="advantage-icon">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <h5>Interpretability</h5>
+                            <p>Results are easy to understand and explain - you can see exactly why URLs were grouped together</p>
+                        </div>
+
+                        <div class="advantage-card">
+                            <div class="advantage-icon">
+                                <i class="fas fa-route"></i>
+                            </div>
+                            <h5>Ward Linkage Method</h5>
+                            <p>Uses Ward's method which minimizes within-cluster variance, creating compact and meaningful URL pattern groups</p>
                         </div>
                     </div>
-                    
-                    <div class="comparison-card">
-                        <h4>K-Means Clustering</h4>
-                        <div class="pros-cons">
-                            <div class="pros">
-                                <h5>✅ Advantages</h5>
-                                <ul>
-                                    <li>Fast and efficient O(n)</li>
-                                    <li>Works well with large datasets</li>
-                                    <li>Simple to implement</li>
-                                    <li>Good for spherical clusters</li>
-                                </ul>
+
+                    <div class="method-explanation">
+                        <h4>URL Pattern Analysis Workflow</h4>
+                        <div class="workflow-steps">
+                            <div class="step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h6>Feature Extraction</h6>
+                                    <p>Extract 29 structural features from URLs (length, entropy, special characters, etc.)</p>
+                                </div>
                             </div>
-                            <div class="cons">
-                                <h5>❌ Disadvantages</h5>
-                                <ul>
-                                    <li>Need to specify number of clusters</li>
-                                    <li>Assumes spherical cluster shapes</li>
-                                    <li>Sensitive to initialization</li>
-                                    <li>May converge to local optima</li>
-                                </ul>
+                            <div class="step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h6>Hierarchical Clustering</h6>
+                                    <p>Build complete dendrogram using Ward linkage to show URL pattern relationships</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h6>Pattern Classification</h6>
+                                    <p>Analyze cluster purity and assign pattern types (normal, suspicious, or mixed)</p>
+                                </div>
+                            </div>
+                            <div class="step">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h6>Similarity Analysis</h6>
+                                    <p>Find nearest neighbors and calculate pattern similarity scores</p>
+                                </div>
                             </div>
                         </div>
                     </div>
