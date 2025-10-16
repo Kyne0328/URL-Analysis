@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Training script for the URL clustering model.
-Run this script to train the hierarchical clustering model on the URL dataset.
-"""
 import os
 import pandas as pd
 import numpy as np
