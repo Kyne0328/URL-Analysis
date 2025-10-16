@@ -81,51 +81,44 @@ function getFaviconLetter(domain) {
     return cleanDomain.charAt(0).toUpperCase();
 }
 
-// Display Results
+// Display Results - THIS FUNCTION IS COMPLETELY REWRITTEN
 function displayResults(data) {
     const urlInfo = data.url_info;
+    const purityInfo = urlInfo.cluster_purity_info;
 
-    // Update result icon and title
+    // --- 1. Determine Result Styling based on Purity Info ---
     const resultIcon = document.getElementById('resultIcon');
     const resultTitle = document.getElementById('resultTitle');
     const resultSubtitle = document.getElementById('resultSubtitle');
 
-    let iconClass = 'fas fa-question-circle';
-    let iconStyle = 'mixed';
-    let title = 'Analysis Results';
-    let subtitle = 'URL pattern analysis complete';
+    let iconClass, iconStyle, title, subtitle;
 
-    // Determine result styling
-    if (urlInfo.prediction === 'suspicious_pattern') {
-        iconClass = 'fas fa-exclamation-triangle';
-        iconStyle = 'suspicious';
-        title = 'Suspicious Pattern Detected';
-        subtitle = 'This URL matches suspicious pattern groups';
-    } else if (urlInfo.prediction === 'normal_pattern') {
-        iconClass = 'fas fa-check-circle';
-        iconStyle = 'safe';
-        title = 'Normal Pattern Detected';
-        subtitle = 'This URL matches normal pattern groups';
-    } else if (urlInfo.prediction === 'mixed_pattern') {
+    if (!purityInfo || purityInfo.total_count === 0) {
         iconClass = 'fas fa-question-circle';
         iconStyle = 'mixed';
-        title = 'Mixed Pattern Group';
-        subtitle = 'This cluster contains both legitimate and suspicious URLs';
-    } else if (urlInfo.prediction === 'uncertain') {
-        iconClass = 'fas fa-question-circle';
-        iconStyle = 'mixed';
-        title = 'Uncertain Pattern';
-        subtitle = 'Pattern classification is ambiguous';
-    } else if (urlInfo.prediction === 'unavailable') {
-        iconClass = 'fas fa-times-circle';
-        iconStyle = 'mixed';
-        title = 'Analysis Unavailable';
-        subtitle = 'Cannot classify this URL';
-    } else if (urlInfo.prediction === 'error') {
-        iconClass = 'fas fa-exclamation-triangle';
-        iconStyle = 'suspicious';
-        title = 'Analysis Error';
-        subtitle = 'An error occurred during analysis';
+        title = 'Unknown Pattern';
+        subtitle = 'This URL belongs to a cluster with no known labeled data.';
+    } else {
+        const phishing_percent = (purityInfo.phishing_count / purityInfo.total_count) * 100;
+        const legitimate_percent = (purityInfo.legitimate_count / purityInfo.total_count) * 100;
+
+        if (purityInfo.purity >= 0.70) { // High purity cluster
+            if (purityInfo.majority_class === 'phishing') {
+                iconClass = 'fas fa-exclamation-triangle';
+                iconStyle = 'suspicious';
+                title = 'High-Risk Pattern Group';
+            } else {
+                iconClass = 'fas fa-check-circle';
+                iconStyle = 'safe';
+                title = 'Low-Risk Pattern Group';
+            }
+        } else { // Mixed purity cluster
+            iconClass = 'fas fa-exclamation-circle';
+            iconStyle = 'mixed';
+            title = 'Mixed-Signal Pattern Group';
+        }
+
+        subtitle = `This pattern group contains ${phishing_percent.toFixed(0)}% suspicious and ${legitimate_percent.toFixed(0)}% normal URLs from our dataset.`;
     }
 
     resultIcon.className = `result-icon ${iconStyle}`;
@@ -133,44 +126,60 @@ function displayResults(data) {
     resultTitle.textContent = title;
     resultSubtitle.textContent = subtitle;
 
-    // Update result details with tooltips
+    // --- MODIFIED SECTION: Add dynamic block for suspicious keywords ---
     const resultDetails = document.getElementById('resultDetails');
+
+    // Create a new div for the keyword warning if needed
+    let keywordWarningHtml = '';
+    if (urlInfo.suspicious_kw_count && urlInfo.suspicious_kw_count > 0) {
+        keywordWarningHtml = `
+            <div class="detail-item" style="grid-column: 1 / -1; background: rgba(245, 101, 101, 0.1); border-color: rgba(245, 101, 101, 0.3);">
+                <div class="detail-label">
+                    <i class="fas fa-keyboard" style="color: #f56565;"></i>
+                    ${createTooltip('Heuristic Keyword Match', 'This URL contains keywords commonly found in phishing links. This increases its risk score.')}
+                </div>
+                <div class="detail-value" style="font-size: 16px; color: #ffbaba;">
+                    Found ${urlInfo.suspicious_kw_count} suspicious keyword(s) (e.g., "login", "secure", "update").
+                </div>
+            </div>
+        `;
+    }
+
+    // Populate the main details grid
     resultDetails.innerHTML = `
         <div class="detail-item">
-            <div class="detail-label">
-                ${createTooltip('Cluster ID', 'The group number this URL belongs to based on similar structural patterns')}
-            </div>
+            <div class="detail-label">${createTooltip('Cluster ID', 'The group number this URL belongs to based on similar structural patterns.')}</div>
             <div class="detail-value">${urlInfo.cluster_id || 'N/A'}</div>
         </div>
         <div class="detail-item">
-            <div class="detail-label">
-                ${createTooltip('Pattern Similarity', 'How closely this URL matches its cluster pattern (higher = more similar)')}
-            </div>
+            <div class="detail-label">${createTooltip('Pattern Match (Confidence)', 'A 0-100% score based on the combined risk. Higher is better.')}</div>
             <div class="detail-value">${(urlInfo.confidence * 100).toFixed(1)}%</div>
         </div>
         <div class="detail-item">
-            <div class="detail-label">
-                ${createTooltip('Neighbor Consistency', 'How consistent the pattern is among nearby URLs (higher = more reliable)')}
-            </div>
+            <div class="detail-label">${createTooltip('Combined Risk Score', 'Raw score from the model where higher values indicate higher risk. This is used to calculate the Pattern Match score.')}</div>
+            <div class="detail-value">${urlInfo.risk_score ? urlInfo.risk_score.toFixed(3) : 'N/A'}</div>
+        </div>
+        <div class="detail-item">
+            <div class="detail-label">${createTooltip('Neighbor Consistency', 'How consistently the nearest neighbors match the analyzed URL\'s pattern group.')}</div>
             <div class="detail-value">${(urlInfo.neighbor_confidence * 100).toFixed(1)}%</div>
         </div>
-                <div class="detail-item">
-                    <div class="detail-label">
-                        ${createTooltip('Distance to Center', 'How far this URL is from its cluster center. Lower values mean the URL is more typical/representative of its pattern group, while higher values indicate it\'s more unusual or an outlier.')}
-                    </div>
-                    <div class="detail-value">${urlInfo.distance_to_centroid ? urlInfo.distance_to_centroid.toFixed(3) : 'N/A'}</div>
-                </div>
         <div class="detail-item">
-            <div class="detail-label">URL</div>
-            <div class="detail-value" style="word-break: break-all; font-size: 14px;">${urlInfo.url}</div>
+            <div class="detail-label">${createTooltip('Cluster Purity', 'The percentage of the dominant URL type (suspicious or normal) within this cluster.')}</div>
+            <div class="detail-value" style="color:${purityInfo.majority_class === 'phishing' ? '#f56565' : '#48bb78'};">
+                ${(purityInfo.purity * 100).toFixed(1)}% ${purityInfo.majority_class}
+            </div>
         </div>
-        ${urlInfo.message ? `
-        <div class="detail-item" style="grid-column: 1 / -1;">
-            <div class="detail-label">Message</div>
-            <div class="detail-value" style="font-style: italic; color: rgba(255, 255, 255, 0.7);">${urlInfo.message}</div>
+        <div class="detail-item">
+            <div class="detail-label">${createTooltip('Cluster Composition', 'The breakdown of known URL types within this cluster from the training dataset.')}</div>
+            <div class="detail-value" style="font-size: 16px;">
+                <i class="fas fa-user-secret" style="color: #f56565;"></i> ${purityInfo.phishing_count} Phishing /
+                <i class="fas fa-shield-alt" style="color: #48bb78;"></i> ${purityInfo.legitimate_count} Legitimate
+            </div>
         </div>
-        ` : ''}
+        <!-- The new keyword warning block will be inserted here -->
+        ${keywordWarningHtml}
     `;
+    // --- END OF MODIFIED SECTION ---
 
     // Update neighbors section with improved formatting
     if (urlInfo.nearest_neighbors && urlInfo.nearest_neighbors.length > 0) {

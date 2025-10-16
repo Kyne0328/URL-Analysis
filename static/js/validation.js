@@ -1,8 +1,18 @@
 // URL Validation
 function validateURL(url) {
     try {
-        const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-        return urlPattern.test(url);
+        // NEW, more comprehensive regex that handles query strings, fragments, and special characters like '%'.
+        // This pattern is much more compliant with RFC 3986 for URLs.
+        const urlPattern = new RegExp(
+            '^(https?:\\/\\/)?' + // protocol
+            '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
+            '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
+            '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
+            '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
+            '(\\#[-a-z\\d_]*)?$', // fragment locator
+            'i'
+        );
+        return !!urlPattern.test(url);
     } catch (e) {
         return false;
     }
@@ -47,6 +57,6 @@ document.querySelectorAll('.example-btn').forEach(btn => {
         urlInput.value = url;
         urlInput.dispatchEvent(new Event('input'));
         urlInput.focus();
-        // Import showToast from ui.js will be handled in main.js
+        showToast('Example URL loaded. Click "Analyze" to proceed.', 'info', 'Example Loaded');
     });
 });
