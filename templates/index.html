@@ -318,8 +318,8 @@
                             <div class="step">
                                 <div class="step-number">3</div>
                                 <div class="step-content">
-                                    <h6>Pattern Classification</h6>
-                                    <p>Analyze cluster purity and assign pattern types (normal, suspicious, or mixed)</p>
+                                    <h6>Cluster Purity Analysis</h6>
+                                    <p>Analyze the composition of each cluster by counting known legitimate and suspicious URLs to determine its risk profile</p>
                                 </div>
                             </div>
                             <div class="step">
@@ -408,9 +408,9 @@
                     <div class="stat-description">URL entropy, length, special chars, and 26 more features</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number">450K+</div>
-                    <div class="stat-label">URLs Analyzed</div>
-                    <div class="stat-description">Trained on 450,000+ legitimate and phishing URLs</div>
+                    <div class="stat-number">60K+</div>
+                    <div class="stat-label">URLs in Training Set</div>
+                    <div class="stat-description">Trained on a balanced, stratified sample from a 450K+ URL dataset</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-number">3</div>
@@ -418,9 +418,9 @@
                     <div class="stat-description">Hierarchical Clustering + Isolation Forest + Rule-Based</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number">95%</div>
-                    <div class="stat-label">Clustering Accuracy</div>
-                    <div class="stat-description">High-purity clusters with 80%+ pattern consistency</div>
+                    <div class="stat-number">>85%</div>
+                    <div class="stat-label">Avg. Cluster Purity</div>
+                    <div class="stat-description">The model forms high-purity clusters, where the dominant pattern (e.g., suspicious) makes up over 85% of the members</div>
                 </div>
             </div>
 

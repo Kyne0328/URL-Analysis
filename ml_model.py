@@ -246,7 +246,7 @@ def find_url_position_in_dendrogram(url):
     except Exception as e:
         return {'url': url, 'error': str(e), 'prediction': 'error'}
 
-def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
+def create_url_cluster_analysis(url_info, figsize=(12, 8), dpi=150):
     """Create a comprehensive analysis showing where URL fits in the clustering tree"""
     try:
         fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
@@ -255,14 +255,28 @@ def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
         fig.patch.set_facecolor('#0f0f0f')
         ax.set_facecolor('#0f0f0f')
 
-        # Get URL analysis
-        url_info = find_url_position_in_dendrogram(url)
+        # --- MODIFIED SECTION: Use passed-in url_info ---
+        # REMOVED: No longer need to call the analysis function again.
+        # url_info = find_url_position_in_dendrogram(url)
 
-        # Create a simple but informative visualization
-        prediction = url_info.get('prediction', 'unknown')
+        url = url_info.get('url', 'N/A')
         confidence = url_info.get('confidence', 0)
         cluster_id = url_info.get('cluster_id', 'N/A')
         distance = url_info.get('distance_to_centroid', 0)
+        purity_info = url_info.get('cluster_purity_info', {})
+
+        # NEW: Derive the prediction string from purity_info, just like the frontend
+        prediction_string = 'Unknown Pattern'
+        if purity_info:
+            if purity_info.get('purity', 0) >= 0.70:
+                if purity_info.get('majority_class') == 'phishing':
+                    prediction_string = 'High-Risk Pattern Group'
+                else:
+                    prediction_string = 'Low-Risk Pattern Group'
+            elif purity_info.get('total_count', 0) > 0:
+                prediction_string = 'Mixed-Signal Pattern Group'
+
+        # --- END OF MODIFIED SECTION ---
 
         # Show cluster distribution
         cluster_counts = {}
@@ -296,11 +310,12 @@ def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
         # Highlight the URL's cluster
         if cluster_id != 'N/A' and cluster_id in clusters_sorted:
             cluster_idx = clusters_sorted.index(cluster_id)
-            bars[cluster_idx].set_edgecolor('blue')
+            bars[cluster_idx].set_edgecolor('#667eea') # Highlight color changed for better visibility
             bars[cluster_idx].set_linewidth(3)
             bars[cluster_idx].set_alpha(1.0)
 
-        ax.set_title(f'URL Pattern Analysis: {url[:50]}...\nPattern Group: {prediction} | Similarity: {confidence:.2f} | Cluster: {cluster_id}', fontsize=16, fontweight='bold', color='white')  # Increased font size
+        # CHANGED: Use the new prediction_string in the title
+        ax.set_title(f'URL Pattern Analysis: {url[:50]}...\nPattern Group: {prediction_string} | Cluster: {cluster_id}', fontsize=16, fontweight='bold', color='white')
         ax.set_xlabel('Cluster ID', fontsize=14, color='white')  # Increased font size
         ax.set_ylabel('Number of Samples', fontsize=14, color='white')  # Increased font size
         ax.set_xticks(range(len(clusters_sorted)))
@@ -325,7 +340,7 @@ def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
         ax.grid(True, alpha=0.3, color=(1.0, 1.0, 1.0, 0.3))
 
         # Add text annotation
-        ax.text(0.02, 0.98, f'URL: {url}\nPattern Group: {prediction}\nSimilarity: {confidence:.2f}\nCluster: {cluster_id}\nDistance: {distance:.3f}',
+        ax.text(0.02, 0.98, f'URL: {url}\nPattern Group: {prediction_string}\nCluster: {cluster_id}\nDistance: {distance:.3f}',
                 transform=ax.transAxes, fontsize=14, color='white',  # Increased from 10
                 bbox=dict(boxstyle="round,pad=0.3", facecolor=(0.4, 0.494, 0.918, 0.2), edgecolor=(0.4, 0.494, 0.918, 0.4), alpha=0.8),
                 verticalalignment='top')
@@ -334,8 +349,8 @@ def create_url_cluster_analysis(url, figsize=(12, 8), dpi=150):
         legend_elements = [
             plt.Rectangle((0,0),1,1, facecolor='red', alpha=0.7, label='Suspicious Pattern Groups'),
             plt.Rectangle((0,0),1,1, facecolor='green', alpha=0.7, label='Normal Pattern Groups'),
-            plt.Rectangle((0,0),1,1, facecolor='gray', alpha=0.7, label='Unknown Pattern Groups'),
-            plt.Rectangle((0,0),1,1, facecolor='blue', alpha=1.0, label='URL Pattern Group')
+            plt.Rectangle((0,0),1,1, facecolor='gray', alpha=0.7, label='Unknown/Mixed Groups'),
+            plt.Rectangle((0,0),1,1, facecolor='#667eea', alpha=1.0, label='URL\'s Assigned Group', ec='white')
         ]
         legend = ax.legend(handles=legend_elements, loc='upper right', fontsize=12, facecolor='#0f0f0f', edgecolor=(1.0, 1.0, 1.0, 0.3))  # Increased font size
         plt.setp(legend.get_texts(), color='white')

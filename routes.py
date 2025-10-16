@@ -23,12 +23,15 @@ def analyze_url():
         if not url.startswith(('http://', 'https://')):
             url = 'https://' + url
 
-        # Analyze URL
+        # --- MODIFIED SECTION: Analyze ONCE and pass results ---
+        # 1. Run the analysis and store the complete result object
         url_info = find_url_position_in_dendrogram(url)
 
-        # Generate matplotlib charts and convert to base64
+        # 2. Generate the plots
         main_dendro_fig = create_dendrogram_figure()
-        url_analysis_fig = create_url_cluster_analysis(url)
+        # 3. Pass the *result object* to the chart function, not the raw URL
+        url_analysis_fig = create_url_cluster_analysis(url_info)
+        # --- END OF MODIFIED SECTION ---
 
         # Convert to base64 images
         main_dendro_b64 = figure_to_base64(main_dendro_fig) if main_dendro_fig else None
