@@ -208,7 +208,7 @@ function displayResults(data) {
     }
 
     // Update charts section with fullscreen capability
-    if (data.main_dendrogram || data.url_analysis) {
+    if (data.main_dendrogram || data.purity_plot_data || data.cluster_distribution_data) {
         const chartsSection = document.getElementById('chartsSection');
 
         if (data.main_dendrogram) {
@@ -216,14 +216,200 @@ function displayResults(data) {
                 <img src="${data.main_dendrogram}" class="chart-image" alt="Hierarchical clustering dendrogram" onclick="openChartFullscreen(this)">
             `;
         }
-        if (data.url_analysis) {
-            document.getElementById('urlAnalysisPlot').innerHTML = `
-                <img src="${data.url_analysis}" class="chart-image" alt="URL cluster pattern analysis" onclick="openChartFullscreen(this)">
-            `;
+
+        // --- NEW: Render interactive purity plot ---
+        if (data.purity_plot_data) {
+            renderPurityPlot(data.purity_plot_data, data.url_info);
+        }
+
+        // --- NEW: Render cluster distribution bar chart ---
+        if (data.cluster_distribution_data) {
+            renderClusterDistributionChart(data.cluster_distribution_data, data.url_info);
         }
 
         chartsSection.style.display = 'grid';
     }
+}
+
+// --- NEW FUNCTION: Renders the interactive purity plot using Chart.js ---
+function renderPurityPlot(plotData, urlInfo) {
+    const canvas = document.getElementById('purityPlotCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Destroy previous chart instance if it exists to prevent conflicts
+    if (canvas.chart) {
+        canvas.chart.destroy();
+    }
+
+    const analyzedClusterId = urlInfo.cluster_id;
+
+    // Separate the analyzed cluster's data point from the rest
+    const backgroundPoints = plotData.filter(p => p.label !== `Cluster ${analyzedClusterId}`);
+    const highlightedPoint = plotData.find(p => p.label === `Cluster ${analyzedClusterId}`);
+
+    const datasets = [{
+        label: 'Other Clusters',
+        data: backgroundPoints,
+        backgroundColor: backgroundPoints.map(p => p.majority_class === 'phishing' ? 'rgba(245, 101, 101, 0.5)' : 'rgba(72, 187, 120, 0.5)'),
+        borderColor: backgroundPoints.map(p => p.majority_class === 'phishing' ? 'rgba(245, 101, 101, 0.8)' : 'rgba(72, 187, 120, 0.8)'),
+        borderWidth: 1,
+        pointRadius: 5,
+        pointHoverRadius: 8
+    }];
+
+    if (highlightedPoint) {
+        datasets.push({
+            label: 'Analyzed URL\'s Cluster',
+            data: [highlightedPoint],
+            backgroundColor: 'rgba(102, 126, 234, 0.8)',
+            borderColor: 'rgba(220, 220, 255, 1)',
+            borderWidth: 2,
+            pointRadius: 10,
+            pointHoverRadius: 13,
+            pointStyle: 'star'
+        });
+    }
+
+    canvas.chart = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: 'white', usePointStyle: true } },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const point = context.raw;
+                            const tooltipLines = [
+                                `${point.label}`,
+                                `Purity: ${point.y.toFixed(1)}% (${point.majority_class})`,
+                                `Size: ${point.x.toLocaleString()} URLs`,
+                                `(${point.phishing_count.toLocaleString()} phishing / ${point.legitimate_count.toLocaleString()} legit)`
+                            ];
+                            return tooltipLines;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'logarithmic',
+                    title: { display: true, text: 'Cluster Size (Number of URLs)', color: 'white' },
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: { display: true, text: 'Cluster Purity (%)', color: 'white' },
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
+            }
+        }
+    });
+}
+
+// --- NEW FUNCTION: Renders the cluster distribution bar chart using Chart.js ---
+function renderClusterDistributionChart(distributionData, urlInfo) {
+    const canvas = document.getElementById('distributionBarCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Destroy previous chart instance if it exists to prevent conflicts
+    if (canvas.chart) {
+        canvas.chart.destroy();
+    }
+
+    const analyzedClusterId = urlInfo.cluster_id;
+
+    // Prepare data for stacked bar chart
+    const labels = distributionData.map(d => `Cluster ${d.cluster_id}`);
+    const phishingData = distributionData.map(d => d.phishing_count);
+    const legitimateData = distributionData.map(d => d.legitimate_count);
+
+    // Find the index of the analyzed cluster
+    const analyzedIndex = distributionData.findIndex(d => d.cluster_id === analyzedClusterId);
+
+    canvas.chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Suspicious URLs',
+                data: phishingData,
+                backgroundColor: phishingData.map((_, i) => i === analyzedIndex ? 'rgba(245, 101, 101, 1.0)' : 'rgba(245, 101, 101, 0.8)'),
+                borderColor: phishingData.map((_, i) => i === analyzedIndex ? 'rgba(102, 126, 234, 1)' : 'rgba(245, 101, 101, 1)'),
+                borderWidth: phishingData.map((_, i) => i === analyzedIndex ? 3 : 1),
+                borderSkipped: false,
+                borderRadius: analyzedIndex >= 0 ? labels.map((_, i) => i === analyzedIndex ? 0 : 4) : 4,
+                borderRadiusBottomLeft: analyzedIndex >= 0 ? labels.map((_, i) => i === analyzedIndex ? 0 : 4) : 4,
+                borderRadiusBottomRight: analyzedIndex >= 0 ? labels.map((_, i) => i === analyzedIndex ? 0 : 4) : 4
+            }, {
+                label: 'Legitimate URLs',
+                data: legitimateData,
+                backgroundColor: legitimateData.map((_, i) => i === analyzedIndex ? 'rgba(72, 187, 120, 1.0)' : 'rgba(72, 187, 120, 0.8)'),
+                borderColor: legitimateData.map((_, i) => i === analyzedIndex ? 'rgba(102, 126, 234, 1)' : 'rgba(72, 187, 120, 1)'),
+                borderWidth: legitimateData.map((_, i) => i === analyzedIndex ? 3 : 1),
+                borderSkipped: false,
+                borderRadius: analyzedIndex >= 0 ? labels.map((_, i) => i === analyzedIndex ? 0 : 4) : 4,
+                borderRadiusTopLeft: analyzedIndex >= 0 ? labels.map((_, i) => i === analyzedIndex ? 0 : 4) : 4,
+                borderRadiusTopRight: analyzedIndex >= 0 ? labels.map((_, i) => i === analyzedIndex ? 0 : 4) : 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: 'white', usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const clusterData = distributionData[context.dataIndex];
+                            const total = clusterData.total_count;
+                            const purity = clusterData.purity.toFixed(1);
+                            const majority = clusterData.majority_class;
+
+                            let lines = [
+                                `Total URLs: ${total.toLocaleString()}`,
+                                `Purity: ${purity}% (${majority})`
+                            ];
+
+                            // Highlight the analyzed cluster
+                            if (clusterData.cluster_id === analyzedClusterId) {
+                                lines.push('★ This URL\'s cluster');
+                            }
+
+                            return lines;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    title: { display: true, text: 'Clusters', color: 'white' },
+                    ticks: {
+                        color: 'white',
+                        maxRotation: 45,
+                        minRotation: 45
+                    },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: { display: true, text: 'Number of URLs', color: 'white' },
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
+            }
+        }
+    });
 }
 
 // Utility Functions

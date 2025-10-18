@@ -148,6 +148,43 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
 
     return fig
 
+def get_purity_plot_data():
+    """Formats all cluster statistics for the frontend purity plot."""
+    if cluster_stats is None:
+        return []
+
+    plot_data = []
+    for cluster_id, stats in cluster_stats.items():
+        plot_data.append({
+            'x': stats['total_count'],
+            'y': stats['purity'] * 100, # Convert to percentage
+            'label': f"Cluster {cluster_id}",
+            'majority_class': stats['majority_class'],
+            'phishing_count': stats['phishing_count'],
+            'legitimate_count': stats['legitimate_count']
+        })
+    return plot_data
+
+def get_cluster_distribution_data():
+    """Formats cluster distribution data for the frontend bar chart."""
+    if cluster_stats is None:
+        return []
+
+    distribution_data = []
+    for cluster_id, stats in cluster_stats.items():
+        distribution_data.append({
+            'cluster_id': int(cluster_id),
+            'total_count': stats['total_count'],
+            'phishing_count': stats['phishing_count'],
+            'legitimate_count': stats['legitimate_count'],
+            'purity': stats['purity'] * 100,
+            'majority_class': stats['majority_class']
+        })
+
+    # Sort by cluster ID for consistent ordering
+    distribution_data.sort(key=lambda x: x['cluster_id'])
+    return distribution_data
+
 def find_url_position_in_dendrogram(url):
     """Find URL position in the hierarchical clustering tree and return cluster stats."""
     try:
@@ -271,120 +308,6 @@ def find_url_position_in_dendrogram(url):
     except Exception as e:
         return {'url': url, 'error': str(e), 'prediction': 'error'}
 
-def create_url_cluster_analysis(url_info, figsize=(12, 8), dpi=150):
-    """Create a comprehensive analysis showing where URL fits in the clustering tree"""
-    try:
-        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-
-        # Set dark theme background matching site design
-        fig.patch.set_facecolor('#0f0f0f')
-        ax.set_facecolor('#0f0f0f')
-
-        # --- MODIFIED SECTION: Use passed-in url_info ---
-        # REMOVED: No longer need to call the analysis function again.
-        # url_info = find_url_position_in_dendrogram(url)
-
-        url = url_info.get('url', 'N/A')
-        confidence = url_info.get('confidence', 0)
-        cluster_id = url_info.get('cluster_id', 'N/A')
-        distance = url_info.get('distance_to_centroid', 0)
-        purity_info = url_info.get('cluster_purity_info', {})
-
-        # --- MODIFIED: Use the pre-calculated pattern_group from the analysis results ---
-        prediction_string = url_info.get('pattern_group', 'Analysis Result')
-
-        # --- END OF MODIFIED SECTION ---
-
-        # Show cluster distribution
-        cluster_counts = {}
-        cluster_labels = {}
-
-        for i, cluster in enumerate(clusters):
-            if cluster not in cluster_counts:
-                cluster_counts[cluster] = 0
-                cluster_labels[cluster] = []
-            cluster_counts[cluster] += 1
-            if i < len(labels):
-                cluster_labels[cluster].append(labels[i])
-
-        # Determine cluster type based on majority label
-        cluster_types = {}
-        for cluster, labels_list in cluster_labels.items():
-            if labels_list:
-                label_counts = pd.Series(labels_list).value_counts()
-                majority_label = label_counts.index[0]
-                cluster_types[cluster] = majority_label
-
-        # Create bar chart
-        clusters_sorted = sorted(cluster_counts.keys())
-        counts = [cluster_counts[c] for c in clusters_sorted]
-        colors = ['red' if cluster_types.get(c) == 'phishing' else
-                 'green' if cluster_types.get(c) == 'legitimate' else 'gray'
-                 for c in clusters_sorted]
-
-        bars = ax.bar(range(len(clusters_sorted)), counts, color=colors, alpha=0.7)
-
-        # Highlight the URL's cluster
-        if cluster_id != 'N/A' and cluster_id in clusters_sorted:
-            cluster_idx = clusters_sorted.index(cluster_id)
-            bars[cluster_idx].set_edgecolor('#667eea') # Highlight color changed for better visibility
-            bars[cluster_idx].set_linewidth(3)
-            bars[cluster_idx].set_alpha(1.0)
-
-        # CHANGED: Use the new prediction_string in the title
-        ax.set_title(f'URL Pattern Analysis: {url[:50]}...\nPattern Group: {prediction_string} | Cluster: {cluster_id}', fontsize=16, fontweight='bold', color='white')
-        ax.set_xlabel('Cluster ID', fontsize=14, color='white')  # Increased font size
-        ax.set_ylabel('Number of Samples', fontsize=14, color='white')  # Increased font size
-        ax.set_xticks(range(len(clusters_sorted)))
-
-        # Handle crowded x-axis labels by showing every nth label
-        n_clusters = len(clusters_sorted)
-        if n_clusters > 20:  # If more than 20 clusters, reduce label density
-            step = max(1, n_clusters // 10)  # Show about 10 labels maximum
-            visible_indices = list(range(0, n_clusters, step))
-            visible_labels = [str(clusters_sorted[i]) if i < n_clusters else '' for i in visible_indices]
-
-            # Create full range of positions but only show some labels
-            ax.set_xticks(range(n_clusters))
-            ax.set_xticklabels([''] * n_clusters)  # Clear all labels first
-            for i, label in zip(visible_indices, visible_labels):
-                ax.text(i, -0.05, label, ha='center', va='top',
-                       fontsize=10, color='white', rotation=45,
-                       transform=ax.get_xaxis_transform())
-        else:
-            ax.set_xticklabels(clusters_sorted, fontsize=12, color='white')
-        ax.tick_params(axis='y', labelsize=12, colors='white')  # Increased font size for y-axis tick labels
-        ax.grid(True, alpha=0.3, color=(1.0, 1.0, 1.0, 0.3))
-
-        # Add text annotation
-        ax.text(0.02, 0.98, f'URL: {url}\nPattern Group: {prediction_string}\nCluster: {cluster_id}\nDistance: {distance:.3f}',
-                transform=ax.transAxes, fontsize=14, color='white',  # Increased from 10
-                bbox=dict(boxstyle="round,pad=0.3", facecolor=(0.4, 0.494, 0.918, 0.2), edgecolor=(0.4, 0.494, 0.918, 0.4), alpha=0.8),
-                verticalalignment='top')
-
-        # Add legend
-        legend_elements = [
-            plt.Rectangle((0,0),1,1, facecolor='red', alpha=0.7, label='Suspicious Pattern Groups'),
-            plt.Rectangle((0,0),1,1, facecolor='green', alpha=0.7, label='Normal Pattern Groups'),
-            plt.Rectangle((0,0),1,1, facecolor='gray', alpha=0.7, label='Unknown/Mixed Groups'),
-            plt.Rectangle((0,0),1,1, facecolor='#667eea', alpha=1.0, label='URL\'s Assigned Group', ec='white')
-        ]
-        legend = ax.legend(handles=legend_elements, loc='upper right', fontsize=12, facecolor='#0f0f0f', edgecolor=(1.0, 1.0, 1.0, 0.3))  # Increased font size
-        plt.setp(legend.get_texts(), color='white')
-
-        return fig
-
-    except Exception as e:
-        print(f"Error creating URL cluster analysis: {e}")
-        # Fallback to simple plot with dark theme
-        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-        fig.patch.set_facecolor('#0f0f0f')
-        ax.set_facecolor('#0f0f0f')
-        ax.text(0.5, 0.5, f'URL Analysis Error\n{str(e)}',
-                ha='center', va='center', transform=ax.transAxes, color='white', fontsize=14)
-        ax.set_title('URL Cluster Analysis', color='white')
-        ax.tick_params(colors='white')
-        return fig
 
 def figure_to_base64(fig):
     """Convert matplotlib figure to base64 string"""

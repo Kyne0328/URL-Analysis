@@ -1227,7 +1227,7 @@ body {
 
 .charts-section {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 30px;
     margin-top: 30px;
 }
@@ -1720,6 +1720,7 @@ a:focus-visible,
     
     .charts-section {
         grid-template-columns: 1fr;
+        gap: 20px;
     }
     
     .neighbors-grid {
