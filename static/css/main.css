@@ -1243,6 +1243,22 @@ body {
     overflow: hidden;
 }
 
+.radar-chart-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.radar-legend {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.radar-legend small {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 .chart-container::before {
     content: '';
     position: absolute;

@@ -14,6 +14,7 @@ import scipy.cluster.hierarchy as sch
 from scipy.cluster.hierarchy import fcluster, dendrogram
 from scipy.spatial.distance import pdist, squareform, cdist
 import joblib
+from scipy.stats import percentileofscore
 from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
@@ -148,6 +149,42 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
 
     return fig
 
+def get_feature_comparison_data(url_features, cluster_id):
+    """
+    Prepares data for the feature comparison radar chart by comparing a URL's
+    features against its cluster's average, normalized as percentiles.
+    """
+    if centroids_matrix is None or X_scaled is None:
+        return None
+
+    # Select key features for interpretability
+    RADAR_FEATURES = [
+        "url_length", "domain_entropy", "suspicious_kw_count",
+        "path_length", "num_slashes", "special_char_ratio"
+    ]
+
+    try:
+        # Find the index for the given cluster_id to get its centroid
+        cluster_idx = centroid_ids.index(cluster_id)
+        centroid_vector = centroids_matrix[cluster_idx]
+
+        # Get the full feature list from a sample dataframe to map indices
+        feature_names = list(pd.DataFrame([url_features]).columns)
+
+        url_percentiles = []
+        centroid_percentiles = []
+
+        for feature in RADAR_FEATURES:
+            feature_idx = feature_names.index(feature)
+            # Calculate percentile score (0-100) for both the URL and the centroid
+            url_percentiles.append(percentileofscore(X_scaled[:, feature_idx], url_features[feature]))
+            centroid_percentiles.append(percentileofscore(X_scaled[:, feature_idx], centroid_vector[feature_idx]))
+
+        return {"labels": RADAR_FEATURES, "url_values": url_percentiles, "centroid_values": centroid_percentiles}
+    except (ValueError, IndexError) as e:
+        print(f"Error getting feature comparison data: {e}")
+        return None
+
 def get_purity_plot_data():
     """Formats all cluster statistics for the frontend purity plot."""
     if cluster_stats is None:
@@ -198,6 +235,9 @@ def find_url_position_in_dendrogram(url):
         feats = extract_features(url)
         X_new = pd.DataFrame([feats])
         X_new_scaled = scaler.transform(X_new)
+
+        # Store the unscaled features for the radar chart comparison
+        unscaled_features_for_radar = {k: v for k, v in feats.items()}
 
         from sklearn.metrics import pairwise_distances_argmin_min
         closest, distances = pairwise_distances_argmin_min(X_new_scaled, centroids_matrix)
@@ -302,7 +342,9 @@ def find_url_position_in_dendrogram(url):
             'suspicious_kw_count': int(suspicious_kw_count),
             'pattern_group': pattern_group,
             'pattern_style': pattern_style,
-            'pattern_icon': pattern_icon
+            'pattern_icon': pattern_icon,
+            # Pass the original unscaled features for the radar chart function
+            'raw_features': feats
         }
 
     except Exception as e:

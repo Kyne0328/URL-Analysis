@@ -226,6 +226,10 @@ function displayResults(data) {
         if (data.cluster_distribution_data) {
             renderClusterDistributionChart(data.cluster_distribution_data, data.url_info);
         }
+        // --- NEW: Render radar chart ---
+        if (data.radar_chart_data) {
+            renderRadarChart(data.radar_chart_data);
+        }
 
         chartsSection.style.display = 'grid';
     }
@@ -406,6 +410,85 @@ function renderClusterDistributionChart(distributionData, urlInfo) {
                     title: { display: true, text: 'Number of URLs', color: 'white' },
                     ticks: { color: 'white' },
                     grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
+            }
+        }
+    });
+}
+
+// --- NEW FUNCTION: Renders the feature comparison radar chart ---
+function renderRadarChart(radarData) {
+    const canvas = document.getElementById('radarChartCanvas');
+    const ctx = canvas.getContext('2d');
+
+    if (canvas.chart) {
+        canvas.chart.destroy();
+    }
+
+    const data = {
+        labels: radarData.labels.map(l => l.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())),
+        datasets: [
+            {
+                label: 'Analyzed URL',
+                data: radarData.url_values,
+                backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                borderColor: 'rgba(102, 126, 234, 1)',
+                pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgba(102, 126, 234, 1)',
+                borderWidth: 2
+            },
+            {
+                label: 'Cluster Average',
+                data: radarData.centroid_values,
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                borderColor: 'rgba(255, 255, 255, 0.7)',
+                pointBackgroundColor: 'rgba(255, 255, 255, 0.7)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgba(255, 255, 255, 0.7)',
+                borderWidth: 2
+            }
+        ]
+    };
+
+    canvas.chart = new Chart(ctx, {
+        type: 'radar',
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: 'white' }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += `${context.formattedValue}th Percentile`;
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    pointLabels: { color: 'white', font: { size: 11 } },
+                    ticks: {
+                        color: 'black',
+                        backdropColor: 'rgba(255, 255, 255, 0.6)',
+                        stepSize: 25
+                    }
                 }
             }
         }
