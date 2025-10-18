@@ -228,6 +228,28 @@ def find_url_position_in_dendrogram(url):
             'purity': 0, 'majority_class': 'unknown'
         })
 
+        # --- NEW: CENTRALIZE PRESENTATION LOGIC ---
+        pattern_group = 'Unknown Pattern'
+        pattern_style = 'mixed'
+        pattern_icon = 'fas fa-question-circle'
+
+        if purity_info and purity_info['total_count'] > 0:
+            purity = purity_info.get('purity', 0)
+            majority_class = purity_info.get('majority_class')
+
+            if purity >= 0.70:
+                if majority_class == 'phishing':
+                    pattern_group = 'High-Risk Pattern Group'
+                    pattern_style = 'suspicious'
+                    pattern_icon = 'fas fa-exclamation-triangle'
+                else:
+                    pattern_group = 'Low-Risk Pattern Group'
+                    pattern_style = 'safe'
+                    pattern_icon = 'fas fa-check-circle'
+            else:
+                pattern_group = 'Mixed-Signal Pattern Group'
+                pattern_style = 'mixed'
+                pattern_icon = 'fas fa-exclamation-circle'
         # --- NEW: INCLUDE SUSPICIOUS KEYWORD COUNT IN RESPONSE ---
         suspicious_kw_count = feats.get('suspicious_kw_count', 0)
 
@@ -240,7 +262,10 @@ def find_url_position_in_dendrogram(url):
             'neighbor_confidence': neighbor_confidence,
             'distance_to_centroid': float(distance_to_centroid),
             'nearest_neighbors': nearest_neighbors,
-            'suspicious_kw_count': int(suspicious_kw_count) # NEW
+            'suspicious_kw_count': int(suspicious_kw_count),
+            'pattern_group': pattern_group,
+            'pattern_style': pattern_style,
+            'pattern_icon': pattern_icon
         }
 
     except Exception as e:
@@ -265,16 +290,8 @@ def create_url_cluster_analysis(url_info, figsize=(12, 8), dpi=150):
         distance = url_info.get('distance_to_centroid', 0)
         purity_info = url_info.get('cluster_purity_info', {})
 
-        # NEW: Derive the prediction string from purity_info, just like the frontend
-        prediction_string = 'Unknown Pattern'
-        if purity_info:
-            if purity_info.get('purity', 0) >= 0.70:
-                if purity_info.get('majority_class') == 'phishing':
-                    prediction_string = 'High-Risk Pattern Group'
-                else:
-                    prediction_string = 'Low-Risk Pattern Group'
-            elif purity_info.get('total_count', 0) > 0:
-                prediction_string = 'Mixed-Signal Pattern Group'
+        # --- MODIFIED: Use the pre-calculated pattern_group from the analysis results ---
+        prediction_string = url_info.get('pattern_group', 'Analysis Result')
 
         # --- END OF MODIFIED SECTION ---
 

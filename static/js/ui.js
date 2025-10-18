@@ -91,32 +91,19 @@ function displayResults(data) {
     const resultTitle = document.getElementById('resultTitle');
     const resultSubtitle = document.getElementById('resultSubtitle');
 
-    let iconClass, iconStyle, title, subtitle;
+    // --- REWRITTEN SECTION: Remove duplicated logic and use backend's classification ---
+    // Get the classification directly from the backend response
+    const iconClass = urlInfo.pattern_icon;
+    const iconStyle = urlInfo.pattern_style;
+    const title = urlInfo.pattern_group;
+    let subtitle;
 
+    // Construct a descriptive subtitle based on the data
     if (!purityInfo || purityInfo.total_count === 0) {
-        iconClass = 'fas fa-question-circle';
-        iconStyle = 'mixed';
-        title = 'Unknown Pattern';
         subtitle = 'This URL belongs to a cluster with no known labeled data.';
     } else {
         const phishing_percent = (purityInfo.phishing_count / purityInfo.total_count) * 100;
         const legitimate_percent = (purityInfo.legitimate_count / purityInfo.total_count) * 100;
-
-        if (purityInfo.purity >= 0.70) { // High purity cluster
-            if (purityInfo.majority_class === 'phishing') {
-                iconClass = 'fas fa-exclamation-triangle';
-                iconStyle = 'suspicious';
-                title = 'High-Risk Pattern Group';
-            } else {
-                iconClass = 'fas fa-check-circle';
-                iconStyle = 'safe';
-                title = 'Low-Risk Pattern Group';
-            }
-        } else { // Mixed purity cluster
-            iconClass = 'fas fa-exclamation-circle';
-            iconStyle = 'mixed';
-            title = 'Mixed-Signal Pattern Group';
-        }
 
         subtitle = `This pattern group contains ${phishing_percent.toFixed(0)}% suspicious and ${legitimate_percent.toFixed(0)}% normal URLs from our dataset.`;
     }
@@ -125,6 +112,7 @@ function displayResults(data) {
     resultIcon.innerHTML = `<i class="${iconClass}"></i>`;
     resultTitle.textContent = title;
     resultSubtitle.textContent = subtitle;
+    // --- END OF REWRITTEN SECTION ---
 
     // --- MODIFIED SECTION: Add dynamic block for suspicious keywords ---
     const resultDetails = document.getElementById('resultDetails');
