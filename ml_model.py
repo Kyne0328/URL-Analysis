@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for server environments
 import matplotlib.pyplot as plt
+import matplotlib.colors
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 from sklearn.preprocessing import RobustScaler
@@ -114,6 +115,11 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
             # Show overall hierarchical structure
             color_threshold = np.percentile(distances, 90)
 
+    # color palette for dendrogram
+    cm = plt.get_cmap('tab20')
+    custom_palette = [matplotlib.colors.rgb2hex(cm(i)) for i in range(cm.N)]
+    sch.set_link_color_palette(custom_palette)
+
     # Create dendrogram
     dendro = dendrogram(
         linkage_matrix,
@@ -122,8 +128,12 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
         color_threshold=color_threshold,
         leaf_rotation=leaf_rotation,
         leaf_font_size=12,
-        show_contracted=True
+        show_contracted=True,
+        above_threshold_color='#666666'
     )
+
+    # Reset palette to default to avoid side effects elsewhere
+    sch.set_link_color_palette(None)
 
     plt.title('Hierarchical Clustering Dendrogram', fontsize=18, fontweight='bold', color='white')
     plt.xlabel('Sample Index or (cluster size)', fontsize=14, color='white')
@@ -138,10 +148,19 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
     plt.tick_params(colors='white')
     plt.gca().tick_params(colors='white')
 
-    # Add cluster color legend
-    colors = ['red', 'green', 'blue', 'orange', 'purple', 'brown', 'pink', 'gray']
+    # Dynamically create the legend based on the actual colors used in the plot.
+    # First, get the default color used for lines above the threshold.
+    default_color = plt.rcParams['axes.prop_cycle'].by_key()['color'][0]
+
+    # Get all unique colors from the dendrogram's line collection.
+    unique_colors = set(dendro['color_list'])
+    # Remove the default color so it doesn't show up in the legend.
+    unique_colors.discard(default_color)
+
+    # Create a legend entry for each unique cluster color.
     legend_elements = []
-    for i, color in enumerate(colors[:len(set(dendro['color_list']))]):
+    # Sorting ensures the legend order is consistent.
+    for i, color in enumerate(sorted(list(unique_colors))):
         legend_elements.append(plt.Line2D([0], [0], color=color, lw=2, label=f'Cluster {i+1}'))
 
     if legend_elements:
