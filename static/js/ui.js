@@ -81,18 +81,16 @@ function getFaviconLetter(domain) {
     return cleanDomain.charAt(0).toUpperCase();
 }
 
-// Display Results - THIS FUNCTION IS COMPLETELY REWRITTEN
+// Display analysis results
 function displayResults(data) {
     const urlInfo = data.url_info;
     const purityInfo = urlInfo.cluster_purity_info;
 
-    // --- 1. Determine Result Styling based on Purity Info ---
     const resultIcon = document.getElementById('resultIcon');
     const resultTitle = document.getElementById('resultTitle');
     const resultSubtitle = document.getElementById('resultSubtitle');
 
-    // --- REWRITTEN SECTION: Remove duplicated logic and use backend's classification ---
-    // Get the classification directly from the backend response
+    // Get classification from backend response
     const iconClass = urlInfo.pattern_icon;
     const iconStyle = urlInfo.pattern_style;
     const title = urlInfo.pattern_group;
@@ -112,12 +110,10 @@ function displayResults(data) {
     resultIcon.innerHTML = `<i class="${iconClass}"></i>`;
     resultTitle.textContent = title;
     resultSubtitle.textContent = subtitle;
-    // --- END OF REWRITTEN SECTION ---
 
-    // --- MODIFIED SECTION: Add dynamic block for suspicious keywords ---
     const resultDetails = document.getElementById('resultDetails');
 
-    // Create a new div for the keyword warning if needed
+    // Add keyword warning if suspicious keywords detected
     let keywordWarningHtml = '';
     if (urlInfo.suspicious_kw_count && urlInfo.suspicious_kw_count > 0) {
         keywordWarningHtml = `
@@ -164,10 +160,8 @@ function displayResults(data) {
                 <i class="fas fa-shield-alt" style="color: #48bb78;"></i> ${purityInfo.legitimate_count} Legitimate
             </div>
         </div>
-        <!-- The new keyword warning block will be inserted here -->
         ${keywordWarningHtml}
     `;
-    // --- END OF MODIFIED SECTION ---
 
     // Update neighbors section with improved formatting
     if (urlInfo.nearest_neighbors && urlInfo.nearest_neighbors.length > 0) {
@@ -183,7 +177,6 @@ function displayResults(data) {
             const domain = extractDomain(nn.url);
             const faviconLetter = getFaviconLetter(domain);
             const formattedURL = formatURLDisplay(nn.url);
-            // Distance is now normalized (0-1), so similarity = 1 - distance
             const similarity = (1 - nn.distance).toFixed(3);
             const similarityPercent = ((1 - nn.distance) * 100).toFixed(1);
 
@@ -217,20 +210,18 @@ function displayResults(data) {
             `;
         }
 
-        // --- NEW: Render interactive purity plot ---
         if (data.purity_plot_data) {
             renderPurityPlot(data.purity_plot_data, data.url_info);
         }
 
-        // --- NEW: Render cluster distribution bar chart ---
         if (data.cluster_distribution_data) {
             renderClusterDistributionChart(data.cluster_distribution_data, data.url_info);
         }
-        // --- NEW: Render radar chart ---
+
         if (data.radar_chart_data) {
             renderRadarChart(data.radar_chart_data);
         }
-        // --- NEW: Render t-SNE plot ---
+
         if (data.tsne_plot_data) {
             renderTsneChart(data.tsne_plot_data);
         }
@@ -239,19 +230,18 @@ function displayResults(data) {
     }
 }
 
-// --- NEW FUNCTION: Renders the interactive purity plot using Chart.js ---
+// Render interactive purity plot using Chart.js
 function renderPurityPlot(plotData, urlInfo) {
     const canvas = document.getElementById('purityPlotCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Destroy previous chart instance if it exists to prevent conflicts
+    // Clean up previous chart instance
     if (canvas.chart) {
         canvas.chart.destroy();
     }
 
     const analyzedClusterId = urlInfo.cluster_id;
 
-    // Separate the analyzed cluster's data point from the rest
     const backgroundPoints = plotData.filter(p => p.label !== `Cluster ${analyzedClusterId}`);
     const highlightedPoint = plotData.find(p => p.label === `Cluster ${analyzedClusterId}`);
 
@@ -320,12 +310,12 @@ function renderPurityPlot(plotData, urlInfo) {
     });
 }
 
-// --- NEW FUNCTION: Renders the cluster distribution bar chart using Chart.js ---
+// Render cluster distribution bar chart using Chart.js
 function renderClusterDistributionChart(distributionData, urlInfo) {
     const canvas = document.getElementById('distributionBarCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Destroy previous chart instance if it exists to prevent conflicts
+    // Clean up previous chart instance
     if (canvas.chart) {
         canvas.chart.destroy();
     }
@@ -420,7 +410,7 @@ function renderClusterDistributionChart(distributionData, urlInfo) {
     });
 }
 
-// --- NEW FUNCTION: Renders the feature comparison radar chart ---
+// Render feature comparison radar chart
 function renderRadarChart(radarData) {
     const canvas = document.getElementById('radarChartCanvas');
     const ctx = canvas.getContext('2d');
@@ -499,7 +489,7 @@ function renderRadarChart(radarData) {
     });
 }
 
-// --- NEW FUNCTION: Renders the t-SNE neighborhood visualization ---
+// Render t-SNE neighborhood visualization
 function renderTsneChart(tsneData) {
     const canvas = document.getElementById('tsneChartCanvas');
     const ctx = canvas.getContext('2d');

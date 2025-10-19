@@ -5,20 +5,20 @@ NEAREST_NEIGHBORS_COUNT = 12  # Number of nearest neighbors to analyze
 SUSPICIOUS_KEYWORDS = ("login", "secure", "update", "verify", "account", "signin",
                        "banking", "paypal", "confirm", "suspend", "wallet", "password")
 
+# Calculate Shannon entropy of a string
 def calculate_entropy(s):
-    """Calculate Shannon entropy of a string"""
     if not s or len(s) == 0:
         return 0
     probs = [s.count(c) / len(s) for c in set(s)]
     return -sum(p * np.log2(p + 1e-10) for p in probs)
 
+# Extract features from URL for clustering
 def extract_features(url):
-    """Extract features from URL for clustering - enhanced with entropy and risk indicators"""
     # Parse URL components
     if "://" in url:
         protocol, rest = url.split("://", 1)
     else:
-        protocol = "http"  # Default to http if no protocol
+        protocol = "http"
         rest = url
 
     # Split domain and path
@@ -32,23 +32,22 @@ def extract_features(url):
     # Extract domain parts
     domain_parts = domain.split(".")
 
-    # Normalize domain for consistent clustering (remove www. prefix)
+    # Normalize domain for consistent clustering
     normalized_domain = domain.replace("www.", "", 1) if domain.startswith("www.") else domain
     normalized_parts = normalized_domain.split(".")
 
-    # Calculate subdomain (excluding www for consistent clustering)
-    # www.example.com should have same subdomain features as example.com
+    # Calculate subdomain
     subdomain_parts = normalized_parts[:-2] if len(normalized_parts) > 2 else []
     subdomain = ".".join(subdomain_parts)
     main_domain = ".".join(normalized_parts[-2:]) if len(normalized_parts) >= 2 else normalized_domain
 
     return {
-        # Basic URL features (use normalized domain for consistency)
+        # Basic URL features
         "url_length": len(url),
-        "domain_length": len(normalized_domain),  # Use normalized to avoid www/non-www clustering split
+        "domain_length": len(normalized_domain),
         "path_length": len(path),
 
-        # Domain structure features (use normalized domain)
+        # Domain structure features
         "num_dots": normalized_domain.count("."),
         "num_dashes": normalized_domain.count("-"),
         "num_underscores": normalized_domain.count("_"),
@@ -65,9 +64,7 @@ def extract_features(url):
         "has_fragment": 1 if "#" in url else 0,
         "query_length": len(url.split("?")[-1]) if "?" in url else 0,
 
-        # Protocol/subdomain features (informational only, reduced weight)
-        # Note: These should NOT heavily influence clustering as legitimate sites
-        # often have both HTTP/HTTPS and www/non-www variants
+        # Protocol features
         "is_https": 1 if protocol == "https" else 0,
         "has_www": 1 if domain.startswith("www.") else 0,
 
@@ -76,11 +73,11 @@ def extract_features(url):
         "has_ip": 1 if any(part.isdigit() and len(part) <= 3 for part in normalized_parts) else 0,
         "suspicious_chars": sum(1 for c in normalized_domain if c in "!@#$%^&*()+=[]{}|;:,.<>?"),
 
-        # TLD features (use normalized parts)
+        # TLD features
         "tld_length": len(normalized_parts[-1]) if normalized_parts else 0,
         "is_common_tld": 1 if normalized_parts[-1] in ["com", "org", "net", "edu", "gov"] else 0,
 
-        # Enhanced features for ensemble (use normalized domain for consistency)
+        # Enhanced features
         "url_entropy": calculate_entropy(url),
         "domain_entropy": calculate_entropy(normalized_domain),
         "suspicious_kw_count": sum(1 for kw in SUSPICIOUS_KEYWORDS if kw in url.lower()),
@@ -92,8 +89,8 @@ def extract_features(url):
         "num_percent": url.count("%"),
     }
 
+# Calculate rule-based risk score from features
 def calculate_feature_risk(features_dict):
-    """Calculate rule-based risk score from features"""
     risk_score = (
         features_dict.get('has_ip', 0) * 0.3 +
         features_dict.get('suspicious_kw_count', 0) * 0.15 +
@@ -102,4 +99,4 @@ def calculate_feature_risk(features_dict):
         (1 if features_dict.get('digit_ratio', 0) > 0.3 else 0) * 0.1 +
         features_dict.get('has_port', 0) * 0.1
     )
-    return min(risk_score, 1.0)  # Cap at 1.0
+    return min(risk_score, 1.0)

@@ -4,7 +4,7 @@ import io
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
+matplotlib.use('Agg')  # Use non-interactive backend for server environments
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
@@ -21,27 +21,25 @@ warnings.filterwarnings('ignore')
 
 from features import extract_features, calculate_feature_risk, NEAREST_NEIGHBORS_COUNT
 
-# Global variables for model components
+# Global model components
 scaler = None
 linkage_matrix = None
-# REMOVED: cluster_map = None
-cluster_stats = None # NEW: Replaces cluster_map
+cluster_stats = None
 centroids_matrix = None
 centroid_ids = None
 adaptive_thresholds = None
 iso_forest = None
 iso_score_normalizer = None
 X_scaled = None
-tsne_mapper = None # NEW
-feature_names = None # NEW
-tsne_data = None # NEW
+tsne_mapper = None
+feature_names = None
+tsne_data = None
 urls = None
 labels = None
 clusters = None
 
+# Load existing model or train new one
 def load_or_train_model():
-    """Load existing model or train new one"""
-    # CHANGED: Added cluster_stats to global scope
     global scaler, linkage_matrix, cluster_stats, centroids_matrix, centroid_ids, adaptive_thresholds, iso_forest, iso_score_normalizer, X_scaled, urls, labels, clusters, tsne_mapper, tsne_data, feature_names
 
     models_dir = "models"
@@ -51,7 +49,6 @@ def load_or_train_model():
     model_files = {
         'scaler': os.path.join(models_dir, 'scaler.pkl'),
         'linkage': os.path.join(models_dir, 'linkage_matrix.pkl'),
-        # CHANGED: 'cluster_map' is now 'cluster_stats'
         'cluster_stats': os.path.join(models_dir, 'cluster_stats.pkl'),
         'centroids': os.path.join(models_dir, 'centroids.pkl'),
         'centroid_ids': os.path.join(models_dir, 'centroid_ids.pkl'),
@@ -70,7 +67,6 @@ def load_or_train_model():
         try:
             scaler = joblib.load(model_files['scaler'])
             linkage_matrix = joblib.load(model_files['linkage'])
-            # CHANGED: Load cluster_stats.pkl
             cluster_stats = joblib.load(model_files['cluster_stats'])
             centroids_matrix = joblib.load(model_files['centroids'])
             centroid_ids = joblib.load(model_files['centroid_ids'])
@@ -97,29 +93,25 @@ def load_or_train_model():
     return train_model()
 
 
+# Create dendrogram figure with dark theme
 def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
                            leaf_rotation=90, figsize=(12, 8), dpi=150):
-    """Create dendrogram figure with dark theme"""
     fig = plt.figure(figsize=figsize, dpi=dpi)
 
-    # Set dark theme background matching site design
+    # Use dark theme to match site design
     fig.patch.set_facecolor('#0f0f0f')
     plt.gca().set_facecolor('#0f0f0f')
 
-    # Calculate optimal threshold for visualization that creates multiple colored clusters
+    # Calculate threshold for clear cluster visualization
     if color_threshold is None:
         distances = linkage_matrix[:, 2]
 
-        # For truncated dendrogram (lastp, p=30), we need to consider the visible merges
-        # The last 30 merges represent the highest-level clustering structure
         if truncate_mode == 'lastp' and p == 30:
-            # Use a threshold that splits the visible top-level merges into multiple color groups
-            # The last 30 distances range from ~65 to ~3000, so we want a threshold in this range
+            # Focus on visible merges to create distinct color groups
             last_30_distances = distances[-30:]
-            # Use a threshold that creates 4-6 color groups in the visible portion
-            color_threshold = np.percentile(last_30_distances, 60)  # 60th percentile of visible merges
+            color_threshold = np.percentile(last_30_distances, 60)
         else:
-            # For full dendrogram, use a threshold that shows hierarchical structure
+            # Show overall hierarchical structure
             color_threshold = np.percentile(distances, 90)
 
     # Create dendrogram
@@ -129,51 +121,48 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
         p=p,
         color_threshold=color_threshold,
         leaf_rotation=leaf_rotation,
-        leaf_font_size=12,  # Increased from 8
+        leaf_font_size=12,
         show_contracted=True
     )
 
-    plt.title('Hierarchical Clustering Dendrogram', fontsize=18, fontweight='bold', color='white')  # Increased from 16
-    plt.xlabel('Sample Index or (cluster size)', fontsize=14, color='white')  # Increased from 12
-    plt.ylabel('Distance', fontsize=14, color='white')  # Increased from 12
+    plt.title('Hierarchical Clustering Dendrogram', fontsize=18, fontweight='bold', color='white')
+    plt.xlabel('Sample Index or (cluster size)', fontsize=14, color='white')
+    plt.ylabel('Distance', fontsize=14, color='white')
 
-    # Draw threshold line with calculated optimal threshold
+    # Show threshold line
     plt.axhline(y=color_threshold, color="#667eea", linestyle="--",
                 label=f'Distance Threshold (t={color_threshold:.1f})')
     plt.grid(True, alpha=0.3, color=(1.0, 1.0, 1.0, 0.3))
 
-    # Set tick colors to white for visibility
+    # Use white text for dark background
     plt.tick_params(colors='white')
     plt.gca().tick_params(colors='white')
 
-    # Add color legend
+    # Add cluster color legend
     colors = ['red', 'green', 'blue', 'orange', 'purple', 'brown', 'pink', 'gray']
     legend_elements = []
     for i, color in enumerate(colors[:len(set(dendro['color_list']))]):
         legend_elements.append(plt.Line2D([0], [0], color=color, lw=2, label=f'Cluster {i+1}'))
 
     if legend_elements:
-        legend = plt.legend(handles=legend_elements, loc='upper right', fontsize=12, facecolor='#0f0f0f', edgecolor=(1.0, 1.0, 1.0, 0.3))  # Increased font size
+        legend = plt.legend(handles=legend_elements, loc='upper right', fontsize=12, facecolor='#0f0f0f', edgecolor=(1.0, 1.0, 1.0, 0.3))
         plt.setp(legend.get_texts(), color='white')
 
     return fig
 
-def get_feature_comparison_data(url_scaled_vector, cluster_id): # No change needed here now
-    """
-    Prepares data for the feature comparison radar chart by comparing a URL's
-    features against its cluster's average, normalized as percentiles.
-    """
+# Prepare data for feature comparison radar chart
+def get_feature_comparison_data(url_scaled_vector, cluster_id):
     if centroids_matrix is None or X_scaled is None or feature_names is None:
         return None
 
-    # Select key features for interpretability
+    # Focus on key features for clear visualization
     RADAR_FEATURES = [
         "url_length", "domain_entropy", "suspicious_kw_count",
         "path_length", "num_slashes", "special_char_ratio"
     ]
 
     try:
-        # Find the index for the given cluster_id to get its centroid
+        # Get cluster centroid for comparison
         cluster_idx = centroid_ids.index(cluster_id)
         centroid_vector = centroids_matrix[cluster_idx]
 
@@ -182,8 +171,7 @@ def get_feature_comparison_data(url_scaled_vector, cluster_id): # No change need
 
         for feature in RADAR_FEATURES:
             feature_idx = feature_names.index(feature)
-            # Calculate percentile score (0-100) for both the URL and the centroid
-            # FIX: Use the scaled vector for the URL, not the raw features.
+            # Convert to percentiles for standardized comparison
             url_percentiles.append(percentileofscore(X_scaled[:, feature_idx], url_scaled_vector[feature_idx]))
             centroid_percentiles.append(percentileofscore(X_scaled[:, feature_idx], centroid_vector[feature_idx]))
 
@@ -192,16 +180,16 @@ def get_feature_comparison_data(url_scaled_vector, cluster_id): # No change need
         print(f"Error getting feature comparison data: {e}")
         return None
 
+# Prepare data for t-SNE neighborhood visualization
 def get_tsne_visualization_data(url_scaled_features, neighbor_urls):
-    """Prepares data for the t-SNE neighborhood visualization."""
     if tsne_mapper is None or tsne_data is None:
         return None
 
     try:
-        # Project the main URL into 2D space (ensure it's a 2D array for predict)
+        # Map URL to 2D space for visualization
         url_2d = tsne_mapper.predict([url_scaled_features])[0].tolist()
 
-        # Find the feature vectors for the neighbor URLs and project them
+        # Map neighbor URLs to 2D space
         neighbor_indices = [urls.index(n['url']) for n in neighbor_urls if n['url'] in urls]
         neighbor_vectors = X_scaled[neighbor_indices]
         neighbors_2d = tsne_mapper.predict(neighbor_vectors).tolist()
@@ -215,8 +203,8 @@ def get_tsne_visualization_data(url_scaled_features, neighbor_urls):
         print(f"Error getting t-SNE visualization data: {e}")
         return None
 
+# Format cluster statistics for purity plot
 def get_purity_plot_data():
-    """Formats all cluster statistics for the frontend purity plot."""
     if cluster_stats is None:
         return []
 
@@ -224,7 +212,7 @@ def get_purity_plot_data():
     for cluster_id, stats in cluster_stats.items():
         plot_data.append({
             'x': stats['total_count'],
-            'y': stats['purity'] * 100, # Convert to percentage
+            'y': stats['purity'] * 100,
             'label': f"Cluster {cluster_id}",
             'majority_class': stats['majority_class'],
             'phishing_count': stats['phishing_count'],
@@ -232,8 +220,8 @@ def get_purity_plot_data():
         })
     return plot_data
 
+# Format cluster distribution data for bar chart
 def get_cluster_distribution_data():
-    """Formats cluster distribution data for the frontend bar chart."""
     if cluster_stats is None:
         return []
 
@@ -248,22 +236,21 @@ def get_cluster_distribution_data():
             'majority_class': stats['majority_class']
         })
 
-    # Sort by cluster ID for consistent ordering
+    # Ensure consistent ordering
     distribution_data.sort(key=lambda x: x['cluster_id'])
     return distribution_data
 
+# Find URL position in hierarchical clustering tree
 def find_url_position_in_dendrogram(url):
-    """Find URL position in the hierarchical clustering tree and return cluster stats."""
     try:
-        # Check if model components are available
+        # Verify model components are loaded
         if cluster_stats is None:
             return {'url': url, 'prediction': 'unavailable', 'message': 'Cluster statistics are not available.'}
         if centroids_matrix is None or len(centroid_ids) == 0:
             return {'url': url, 'prediction': 'unavailable', 'message': 'No valid centroids found.'}
 
-        # Extract features and find the nearest cluster
+        # Extract features and find nearest cluster
         feats = extract_features(url)
-        # FIX: Enforce the correct column order when creating the DataFrame
         X_new = pd.DataFrame([feats], columns=feature_names)
         X_new_scaled = scaler.transform(X_new)
 
@@ -272,47 +259,35 @@ def find_url_position_in_dendrogram(url):
         cluster_id = centroid_ids[closest[0]]
         distance_to_centroid = distances[0]
 
-        # --- MODIFIED SECTION: REFINED ENSEMBLE AND CONFIDENCE LOGIC ---
-
-        # Component 1: Clustering score
+        # Calculate ensemble risk score from multiple components
         adaptive_threshold = adaptive_thresholds.get(cluster_id, 5.0)
         cluster_score = distance_to_centroid / adaptive_threshold if adaptive_threshold > 0 else 1.0
 
-        # Component 2: Isolation Forest score
         iso_score_norm = min(-iso_forest.score_samples(X_new_scaled)[0] / iso_score_normalizer, 2.0) if iso_forest and iso_score_normalizer > 0 else 0
 
-        # Component 3: Feature-based risk score
         feature_risk = calculate_feature_risk(feats)
 
-        # Heuristic weights for the ensemble components. These were determined empirically
-        # to balance the influence of structural clustering, anomaly detection, and known risk patterns.
-        W_CLUSTER = 0.45 # Weight for how much of an outlier the URL is within its own cluster
-        W_ANOMALY = 0.35 # Weight for how anomalous the URL is compared to the entire dataset
-        W_HEURISTIC = 0.20 # Weight for known suspicious patterns (e.g., keywords, IP addresses)
+        # Combine components with empirically determined weights
+        W_CLUSTER = 0.45
+        W_ANOMALY = 0.35
+        W_HEURISTIC = 0.20
 
-        # The combined_risk_score is an unbounded score where higher values indicate higher risk.
         combined_risk_score = (
             W_CLUSTER * cluster_score +
             W_ANOMALY * iso_score_norm +
             W_HEURISTIC * feature_risk
         )
 
-        # We convert the unbounded risk score into a bounded confidence score (0-1).
-        # This linear mapping assumes a risk score of ~0.2 is very low risk (100% confidence)
-        # and a score of ~1.2 is very high risk (0% confidence).
+        # Convert to bounded confidence score
         LOW_RISK_THRESHOLD = 0.2
         HIGH_RISK_THRESHOLD = 1.2
 
-        # Normalize the risk score to a 0-1 range
         normalized_risk = (combined_risk_score - LOW_RISK_THRESHOLD) / (HIGH_RISK_THRESHOLD - LOW_RISK_THRESHOLD)
         bounded_risk = max(0, min(1, normalized_risk))
 
-        # Confidence is the inverse of the bounded risk
         confidence = 1.0 - bounded_risk
 
-        # --- END OF MODIFIED SECTION ---
-
-        # --- NEAREST NEIGHBORS (No changes here) ---
+        # Find nearest neighbors in feature space
         distances_to_all = np.linalg.norm(X_scaled - X_new_scaled, axis=1)
         nearest_indices = np.argsort(distances_to_all)[:NEAREST_NEIGHBORS_COUNT]
         max_reasonable_distance = 5.0
@@ -321,19 +296,19 @@ def find_url_position_in_dendrogram(url):
         nearest_neighbors = [{
             'url': urls[i],
             'label': labels[i],
-            'distance': float(1 - normalized_distances[idx]), # Convert similarity to distance for consistency
+            'distance': float(1 - normalized_distances[idx]),
             'cluster': int(clusters[i])
         } for idx, i in enumerate(nearest_indices)]
 
         neighbor_confidence = np.mean([1 - n['distance'] for n in nearest_neighbors]) if nearest_neighbors else 0
 
-        # --- NEW: RETURN DETAILED CLUSTER STATISTICS ---
+        # Get cluster statistics for presentation
         purity_info = cluster_stats.get(cluster_id, {
             'total_count': 0, 'phishing_count': 0, 'legitimate_count': 0,
             'purity': 0, 'majority_class': 'unknown'
         })
 
-        # --- NEW: CENTRALIZE PRESENTATION LOGIC ---
+        # Determine pattern group classification
         pattern_group = 'Unknown Pattern'
         pattern_style = 'mixed'
         pattern_icon = 'fas fa-question-circle'
@@ -355,15 +330,15 @@ def find_url_position_in_dendrogram(url):
                 pattern_group = 'Mixed-Signal Pattern Group'
                 pattern_style = 'mixed'
                 pattern_icon = 'fas fa-exclamation-circle'
-        # --- NEW: INCLUDE SUSPICIOUS KEYWORD COUNT IN RESPONSE ---
+
         suspicious_kw_count = feats.get('suspicious_kw_count', 0)
 
         return {
             'url': url,
             'cluster_id': int(cluster_id),
             'cluster_purity_info': purity_info,
-            'confidence': confidence, # The new, more interpretable confidence
-            'risk_score': float(combined_risk_score), # NEW: Also return the raw score for context
+            'confidence': confidence,
+            'risk_score': float(combined_risk_score),
             'neighbor_confidence': neighbor_confidence,
             'distance_to_centroid': float(distance_to_centroid),
             'nearest_neighbors': nearest_neighbors,
@@ -371,9 +346,7 @@ def find_url_position_in_dendrogram(url):
             'pattern_group': pattern_group,
             'pattern_style': pattern_style,
             'pattern_icon': pattern_icon,
-            # Pass the original unscaled features for the radar chart function
             'raw_features': feats,
-            # Pass the scaled features for t-SNE mapping
             'scaled_features': X_new_scaled.tolist()
         }
 
@@ -381,10 +354,10 @@ def find_url_position_in_dendrogram(url):
         return {'url': url, 'error': str(e), 'prediction': 'error'}
 
 
+# Convert matplotlib figure to base64 string
 def figure_to_base64(fig):
-    """Convert matplotlib figure to base64 string"""
     buffer = io.BytesIO()
-    fig.savefig(buffer, format='png', bbox_inches='tight', dpi=150)  # Increased DPI from 100
+    fig.savefig(buffer, format='png', bbox_inches='tight', dpi=150)
     buffer.seek(0)
     image_base64 = base64.b64encode(buffer.getvalue()).decode()
     buffer.close()

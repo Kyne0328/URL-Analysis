@@ -1,8 +1,7 @@
-// URL Validation
+// Validate URL format
 function validateURL(url) {
     try {
-        // NEW, more comprehensive regex that handles query strings, fragments, and special characters like '%'.
-        // This pattern is much more compliant with RFC 3986 for URLs.
+        // RFC 3986 compliant regex for URL validation
         const urlPattern = new RegExp(
             '^(https?:\\/\\/)?' + // protocol
             '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name

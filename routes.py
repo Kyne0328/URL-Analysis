@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 
 app = Flask(__name__)
 
+# Main page route
 @app.route('/')
 def index():
-    """Main page"""
     return render_template('index.html')
 
+# Analyze URL and return results
 @app.route('/analyze', methods=['POST'])
 def analyze_url():
-    """Analyze URL and return results"""
     try:
         data = request.get_json()
         url = data.get('url', '').strip()
@@ -19,31 +19,30 @@ def analyze_url():
         if not url:
             return jsonify({'error': 'URL is required'}), 400
 
-        # Add protocol if missing
+        # Ensure URL has protocol
         if not url.startswith(('http://', 'https://')):
             url = 'https://' + url
 
-        # 1. Run the analysis and store the complete result object
+        # Perform URL analysis
         url_info = find_url_position_in_dendrogram(url)
 
-        # 2. Generate the dendrogram and get data for the plots
+        # Generate visualization data
         main_dendro_fig = create_dendrogram_figure()
         purity_plot_data = get_purity_plot_data()
         cluster_distribution_data = get_cluster_distribution_data()
 
-        # 3. Get data for the new radar chart
+        # Prepare radar chart data
         radar_chart_data = None
         if url_info and 'scaled_features' in url_info:
             radar_chart_data = get_feature_comparison_data(url_info['scaled_features'][0], url_info['cluster_id'])
 
-        # 4. Get data for the t-SNE plot
-        # FIX: Pass the first (and only) row of the scaled features
+        # Prepare t-SNE visualization data
         tsne_plot_data = get_tsne_visualization_data(url_info['scaled_features'][0], url_info['nearest_neighbors'])
 
-        # Convert to base64 images
+        # Convert plot to base64
         main_dendro_b64 = figure_to_base64(main_dendro_fig) if main_dendro_fig else None
 
-        # Close figures to free memory
+        # Clean up memory
         if main_dendro_fig:
             plt.close(main_dendro_fig)
 

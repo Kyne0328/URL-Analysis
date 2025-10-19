@@ -13,17 +13,17 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.model_selection import train_test_split
 from features import extract_features
 
+# Train hierarchical clustering model and save artifacts
 def train_model():
-    """Train hierarchical clustering model and save artifacts."""
     try:
-        # Load dataset
+        # Load and clean dataset
         df = pd.read_csv("URL dataset.csv")
         df = df.rename(columns={"URL": "url", "Url": "url", "type": "label", "Type": "label"})
         if "label" not in df.columns: df["label"] = "unknown"
         df = df.drop_duplicates(subset="url").dropna(subset=["url"])
         print(f"Dataset size: {df.shape}")
 
-        # Stratified sampling for training set
+        # Create balanced training sample
         legit_rows = df[df["label"] == "legitimate"]
         phish_rows = df[df["label"] == "phishing"]
         n_phish = min(15000, len(phish_rows))
@@ -34,19 +34,18 @@ def train_model():
         ]).reset_index(drop=True)
         print(f"Training with {len(df_sample)} samples ({n_legit} legit, {n_phish} phish)")
 
-        # Feature extraction and scaling
+        # Extract features and scale for clustering
         features_list = df_sample["url"].apply(extract_features).tolist()
         X_sample = pd.DataFrame(features_list)
-        # NEW: Save the exact feature order to enforce consistency
         feature_names = X_sample.columns.tolist()
         scaler = RobustScaler()
         X_scaled = scaler.fit_transform(X_sample)
 
-        # Hierarchical clustering on a stratified subsample
+        # Use subsample for efficient clustering
         clustering_sample_size = min(10000, len(X_scaled))
         print(f"Building dendrogram with {clustering_sample_size} stratified samples...")
 
-        # Stratified sample for clustering
+        # Create stratified sample for clustering
         clustering_indices, _ = train_test_split(
             np.arange(len(X_scaled)),
             train_size=clustering_sample_size,
@@ -58,7 +57,7 @@ def train_model():
         linkage_matrix = sch.linkage(X_clustering, method="ward")
         clusters_subset = fcluster(linkage_matrix, t=10, criterion="distance")
 
-        # Assign all samples to nearest cluster centroid
+        # Assign all samples to nearest centroids
         unique_clusters, counts = np.unique(clusters_subset, return_counts=True)
         print(f"Found {len(unique_clusters)} initial clusters.")
         cluster_centroids = {c: X_clustering[clusters_subset == c].mean(axis=0) for c in unique_clusters}
@@ -68,7 +67,7 @@ def train_model():
         clusters = unique_clusters[np.argmin(distances, axis=1)]
         df_sample["cluster"] = clusters
 
-        # --- NEW: CALCULATE AND STORE CLUSTER STATISTICS ---
+        # Calculate cluster purity statistics
         print("\nCalculating cluster purity statistics...")
         cluster_stats = {}
         for c in np.unique(clusters):
@@ -95,7 +94,7 @@ def train_model():
             }
         print("Cluster statistics calculated.")
 
-        # --- ADAPTIVE THRESHOLDS AND ISOLATION FOREST (No major changes) ---
+        # Calculate adaptive thresholds per cluster
         adaptive_thresholds = {}
         for c, stats in cluster_stats.items():
             cluster_indices = df_sample[df_sample["cluster"] == c].index
@@ -113,7 +112,7 @@ def train_model():
         iso_scores_train = -iso_forest.score_samples(X_scaled)
         iso_score_normalizer = np.percentile(iso_scores_train, 99)
 
-        # --- NEW: T-SNE MODEL FOR 2D VISUALIZATION ---
+        # Generate t-SNE model for 2D visualization
         print("\nGenerating t-SNE model for 2D visualization...")
         tsne_sample_size = min(5000, len(X_scaled))
         tsne_indices, _ = train_test_split(
@@ -124,37 +123,35 @@ def train_model():
         )
         X_tsne_sample = X_scaled[tsne_indices]
 
-        # Perform t-SNE
+        # Create 2D embedding
         tsne = TSNE(n_components=2, random_state=42, perplexity=30, max_iter=1000)
         X_tsne_2d = tsne.fit_transform(X_tsne_sample)
 
-        # Train a KNN model to map high-D to low-D space
-        # This allows us to project new URLs into the existing t-SNE plot
+        # Train mapper to project new URLs into 2D space
         print("Training t-SNE mapping model (KNeighborsRegressor)...")
         tsne_mapper = KNeighborsRegressor(n_neighbors=10)
         tsne_mapper.fit(X_tsne_sample, X_tsne_2d)
 
-        # Prepare t-SNE data for saving (for background plotting)
+        # Prepare data for background plotting
         tsne_data_for_plot = {
             'coords': X_tsne_2d.tolist(),
             'labels': df_sample.iloc[tsne_indices]['label'].tolist()
         }
 
-        # --- SAVE MODEL ARTIFACTS ---
+        # Save all model artifacts
         models_dir = "models"
         os.makedirs(models_dir, exist_ok=True)
         joblib.dump(scaler, os.path.join(models_dir, 'scaler.pkl'))
         joblib.dump(linkage_matrix, os.path.join(models_dir, 'linkage_matrix.pkl'))
-        joblib.dump(cluster_stats, os.path.join(models_dir, 'cluster_stats.pkl')) # SAVING NEW STATS
+        joblib.dump(cluster_stats, os.path.join(models_dir, 'cluster_stats.pkl'))
         joblib.dump(adaptive_thresholds, os.path.join(models_dir, 'adaptive_thresholds.pkl'))
         joblib.dump(iso_forest, os.path.join(models_dir, 'iso_forest.pkl'))
         joblib.dump(iso_score_normalizer, os.path.join(models_dir, 'iso_normalizer.pkl'))
-        # NEW: Save t-SNE related models
         joblib.dump(feature_names, os.path.join(models_dir, 'feature_names.pkl'))
         joblib.dump(tsne_mapper, os.path.join(models_dir, 'tsne_mapper.pkl'))
         joblib.dump(tsne_data_for_plot, os.path.join(models_dir, 'tsne_data.pkl'))
 
-        # Save centroids and data separately
+        # Save centroids and processed data
         centroid_ids = list(cluster_centroids.keys())
         centroids_matrix = np.array(list(cluster_centroids.values()))
         joblib.dump(centroids_matrix, os.path.join(models_dir, 'centroids.pkl'))
