@@ -4,19 +4,13 @@ import io
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend for server environments
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.colors
-import plotly.graph_objects as go
-import plotly.figure_factory as ff
-from sklearn.preprocessing import RobustScaler
-from sklearn.ensemble import IsolationForest
 import scipy.cluster.hierarchy as sch
-from scipy.cluster.hierarchy import fcluster, dendrogram
-from scipy.spatial.distance import pdist, squareform, cdist
+from scipy.cluster.hierarchy import dendrogram
 import joblib
 from scipy.stats import percentileofscore
-from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 

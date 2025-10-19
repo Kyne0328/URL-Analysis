@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, jsonify, send_file
-from ml_model import load_or_train_model, find_url_position_in_dendrogram, create_dendrogram_figure, get_purity_plot_data, get_feature_comparison_data, get_cluster_distribution_data, get_tsne_visualization_data, figure_to_base64
+from flask import Flask, render_template, request, jsonify
+from ml_model import find_url_position_in_dendrogram, create_dendrogram_figure, get_purity_plot_data, get_feature_comparison_data, get_cluster_distribution_data, get_tsne_visualization_data, figure_to_base64
 import matplotlib.pyplot as plt
 
 app = Flask(__name__)
