@@ -7,7 +7,6 @@ import scipy.cluster.hierarchy as sch
 from scipy.cluster.hierarchy import fcluster
 from scipy.spatial.distance import cdist
 import joblib
-from sklearn.metrics import classification_report
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.model_selection import train_test_split
