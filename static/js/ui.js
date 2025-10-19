@@ -230,6 +230,10 @@ function displayResults(data) {
         if (data.radar_chart_data) {
             renderRadarChart(data.radar_chart_data);
         }
+        // --- NEW: Render t-SNE plot ---
+        if (data.tsne_plot_data) {
+            renderTsneChart(data.tsne_plot_data);
+        }
 
         chartsSection.style.display = 'grid';
     }
@@ -489,6 +493,102 @@ function renderRadarChart(radarData) {
                         backdropColor: 'rgba(255, 255, 255, 0.6)',
                         stepSize: 25
                     }
+                }
+            }
+        }
+    });
+}
+
+// --- NEW FUNCTION: Renders the t-SNE neighborhood visualization ---
+function renderTsneChart(tsneData) {
+    const canvas = document.getElementById('tsneChartCanvas');
+    const ctx = canvas.getContext('2d');
+
+    if (canvas.chart) {
+        canvas.chart.destroy();
+    }
+
+    const backgroundCoords = tsneData.background_data.coords;
+    const backgroundLabels = tsneData.background_data.labels;
+
+    const legitBackground = [];
+    const phishBackground = [];
+    for (let i = 0; i < backgroundCoords.length; i++) {
+        const point = { x: backgroundCoords[i][0], y: backgroundCoords[i][1] };
+        if (backgroundLabels[i] === 'legitimate') {
+            legitBackground.push(point);
+        } else {
+            phishBackground.push(point);
+        }
+    }
+
+    const datasets = [
+        {
+            label: 'Legitimate URLs (Sample)',
+            data: legitBackground,
+            backgroundColor: 'rgba(72, 187, 120, 0.2)',
+            pointRadius: 2,
+            pointHoverRadius: 4
+        },
+        {
+            label: 'Phishing URLs (Sample)',
+            data: phishBackground,
+            backgroundColor: 'rgba(245, 101, 101, 0.2)',
+            pointRadius: 2,
+            pointHoverRadius: 4
+        },
+        {
+            label: 'Nearest Neighbors',
+            data: tsneData.neighbor_coords,
+            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+            borderColor: 'rgba(255, 255, 255, 1)',
+            borderWidth: 1,
+            pointRadius: 5,
+            pointHoverRadius: 7
+        },
+        {
+            label: 'Analyzed URL',
+            data: [tsneData.analyzed_url_coord],
+            backgroundColor: 'rgba(102, 126, 234, 1)',
+            borderColor: 'rgba(220, 220, 255, 1)',
+            borderWidth: 2,
+            pointRadius: 10,
+            pointHoverRadius: 13,
+            pointStyle: 'star'
+        }
+    ];
+
+    canvas.chart = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: 'white', usePointStyle: true }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label;
+                        }
+                    }
+                },
+                zoom: { // Enable zoom and pan
+                    pan: { enabled: true, mode: 'xy' },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+                }
+            },
+            scales: { // Hide axes for a cleaner "map" look
+                x: {
+                    ticks: { display: false },
+                    grid: { display: false }
+                },
+                y: {
+                    ticks: { display: false },
+                    grid: { display: false }
                 }
             }
         }

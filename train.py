@@ -8,6 +8,9 @@ from scipy.cluster.hierarchy import fcluster
 from scipy.spatial.distance import cdist
 import joblib
 from sklearn.metrics import classification_report
+from sklearn.manifold import TSNE
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.model_selection import train_test_split
 from features import extract_features
 
 def train_model():
@@ -34,6 +37,8 @@ def train_model():
         # Feature extraction and scaling
         features_list = df_sample["url"].apply(extract_features).tolist()
         X_sample = pd.DataFrame(features_list)
+        # NEW: Save the exact feature order to enforce consistency
+        feature_names = X_sample.columns.tolist()
         scaler = RobustScaler()
         X_scaled = scaler.fit_transform(X_sample)
 
@@ -42,7 +47,6 @@ def train_model():
         print(f"Building dendrogram with {clustering_sample_size} stratified samples...")
 
         # Stratified sample for clustering
-        from sklearn.model_selection import train_test_split
         clustering_indices, _ = train_test_split(
             np.arange(len(X_scaled)),
             train_size=clustering_sample_size,
@@ -109,6 +113,33 @@ def train_model():
         iso_scores_train = -iso_forest.score_samples(X_scaled)
         iso_score_normalizer = np.percentile(iso_scores_train, 99)
 
+        # --- NEW: T-SNE MODEL FOR 2D VISUALIZATION ---
+        print("\nGenerating t-SNE model for 2D visualization...")
+        tsne_sample_size = min(5000, len(X_scaled))
+        tsne_indices, _ = train_test_split(
+            np.arange(len(X_scaled)),
+            train_size=tsne_sample_size,
+            stratify=df_sample['label'],
+            random_state=42
+        )
+        X_tsne_sample = X_scaled[tsne_indices]
+
+        # Perform t-SNE
+        tsne = TSNE(n_components=2, random_state=42, perplexity=30, max_iter=1000)
+        X_tsne_2d = tsne.fit_transform(X_tsne_sample)
+
+        # Train a KNN model to map high-D to low-D space
+        # This allows us to project new URLs into the existing t-SNE plot
+        print("Training t-SNE mapping model (KNeighborsRegressor)...")
+        tsne_mapper = KNeighborsRegressor(n_neighbors=10)
+        tsne_mapper.fit(X_tsne_sample, X_tsne_2d)
+
+        # Prepare t-SNE data for saving (for background plotting)
+        tsne_data_for_plot = {
+            'coords': X_tsne_2d.tolist(),
+            'labels': df_sample.iloc[tsne_indices]['label'].tolist()
+        }
+
         # --- SAVE MODEL ARTIFACTS ---
         models_dir = "models"
         os.makedirs(models_dir, exist_ok=True)
@@ -118,6 +149,10 @@ def train_model():
         joblib.dump(adaptive_thresholds, os.path.join(models_dir, 'adaptive_thresholds.pkl'))
         joblib.dump(iso_forest, os.path.join(models_dir, 'iso_forest.pkl'))
         joblib.dump(iso_score_normalizer, os.path.join(models_dir, 'iso_normalizer.pkl'))
+        # NEW: Save t-SNE related models
+        joblib.dump(feature_names, os.path.join(models_dir, 'feature_names.pkl'))
+        joblib.dump(tsne_mapper, os.path.join(models_dir, 'tsne_mapper.pkl'))
+        joblib.dump(tsne_data_for_plot, os.path.join(models_dir, 'tsne_data.pkl'))
 
         # Save centroids and data separately
         centroid_ids = list(cluster_centroids.keys())

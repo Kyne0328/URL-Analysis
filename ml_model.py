@@ -32,6 +32,9 @@ adaptive_thresholds = None
 iso_forest = None
 iso_score_normalizer = None
 X_scaled = None
+tsne_mapper = None # NEW
+feature_names = None # NEW
+tsne_data = None # NEW
 urls = None
 labels = None
 clusters = None
@@ -39,7 +42,7 @@ clusters = None
 def load_or_train_model():
     """Load existing model or train new one"""
     # CHANGED: Added cluster_stats to global scope
-    global scaler, linkage_matrix, cluster_stats, centroids_matrix, centroid_ids, adaptive_thresholds, iso_forest, iso_score_normalizer, X_scaled, urls, labels, clusters
+    global scaler, linkage_matrix, cluster_stats, centroids_matrix, centroid_ids, adaptive_thresholds, iso_forest, iso_score_normalizer, X_scaled, urls, labels, clusters, tsne_mapper, tsne_data, feature_names
 
     models_dir = "models"
     if not os.path.exists(models_dir):
@@ -55,7 +58,10 @@ def load_or_train_model():
         'adaptive_thresholds': os.path.join(models_dir, 'adaptive_thresholds.pkl'),
         'iso_forest': os.path.join(models_dir, 'iso_forest.pkl'),
         'iso_normalizer': os.path.join(models_dir, 'iso_normalizer.pkl'),
-        'data': os.path.join(models_dir, 'processed_data.pkl')
+        'feature_names': os.path.join(models_dir, 'feature_names.pkl'),
+        'data': os.path.join(models_dir, 'processed_data.pkl'),
+        'tsne_mapper': os.path.join(models_dir, 'tsne_mapper.pkl'),
+        'tsne_data': os.path.join(models_dir, 'tsne_data.pkl'),
     }
 
     # Check if all model files exist
@@ -71,6 +77,9 @@ def load_or_train_model():
             adaptive_thresholds = joblib.load(model_files['adaptive_thresholds'])
             iso_forest = joblib.load(model_files['iso_forest'])
             iso_score_normalizer = joblib.load(model_files['iso_normalizer'])
+            feature_names = joblib.load(model_files['feature_names'])
+            tsne_mapper = joblib.load(model_files['tsne_mapper'])
+            tsne_data = joblib.load(model_files['tsne_data'])
             data = joblib.load(model_files['data'])
             X_scaled = data['X_scaled']
             urls = data['urls']
@@ -149,12 +158,12 @@ def create_dendrogram_figure(truncate_mode='lastp', p=30, color_threshold=None,
 
     return fig
 
-def get_feature_comparison_data(url_features, cluster_id):
+def get_feature_comparison_data(url_scaled_vector, cluster_id): # No change needed here now
     """
     Prepares data for the feature comparison radar chart by comparing a URL's
     features against its cluster's average, normalized as percentiles.
     """
-    if centroids_matrix is None or X_scaled is None:
+    if centroids_matrix is None or X_scaled is None or feature_names is None:
         return None
 
     # Select key features for interpretability
@@ -168,21 +177,42 @@ def get_feature_comparison_data(url_features, cluster_id):
         cluster_idx = centroid_ids.index(cluster_id)
         centroid_vector = centroids_matrix[cluster_idx]
 
-        # Get the full feature list from a sample dataframe to map indices
-        feature_names = list(pd.DataFrame([url_features]).columns)
-
         url_percentiles = []
         centroid_percentiles = []
 
         for feature in RADAR_FEATURES:
             feature_idx = feature_names.index(feature)
             # Calculate percentile score (0-100) for both the URL and the centroid
-            url_percentiles.append(percentileofscore(X_scaled[:, feature_idx], url_features[feature]))
+            # FIX: Use the scaled vector for the URL, not the raw features.
+            url_percentiles.append(percentileofscore(X_scaled[:, feature_idx], url_scaled_vector[feature_idx]))
             centroid_percentiles.append(percentileofscore(X_scaled[:, feature_idx], centroid_vector[feature_idx]))
 
         return {"labels": RADAR_FEATURES, "url_values": url_percentiles, "centroid_values": centroid_percentiles}
     except (ValueError, IndexError) as e:
         print(f"Error getting feature comparison data: {e}")
+        return None
+
+def get_tsne_visualization_data(url_scaled_features, neighbor_urls):
+    """Prepares data for the t-SNE neighborhood visualization."""
+    if tsne_mapper is None or tsne_data is None:
+        return None
+
+    try:
+        # Project the main URL into 2D space (ensure it's a 2D array for predict)
+        url_2d = tsne_mapper.predict([url_scaled_features])[0].tolist()
+
+        # Find the feature vectors for the neighbor URLs and project them
+        neighbor_indices = [urls.index(n['url']) for n in neighbor_urls if n['url'] in urls]
+        neighbor_vectors = X_scaled[neighbor_indices]
+        neighbors_2d = tsne_mapper.predict(neighbor_vectors).tolist()
+
+        return {
+            'background_data': tsne_data,
+            'analyzed_url_coord': {'x': url_2d[0], 'y': url_2d[1]},
+            'neighbor_coords': [{'x': coord[0], 'y': coord[1]} for coord in neighbors_2d]
+        }
+    except Exception as e:
+        print(f"Error getting t-SNE visualization data: {e}")
         return None
 
 def get_purity_plot_data():
@@ -233,11 +263,9 @@ def find_url_position_in_dendrogram(url):
 
         # Extract features and find the nearest cluster
         feats = extract_features(url)
-        X_new = pd.DataFrame([feats])
+        # FIX: Enforce the correct column order when creating the DataFrame
+        X_new = pd.DataFrame([feats], columns=feature_names)
         X_new_scaled = scaler.transform(X_new)
-
-        # Store the unscaled features for the radar chart comparison
-        unscaled_features_for_radar = {k: v for k, v in feats.items()}
 
         from sklearn.metrics import pairwise_distances_argmin_min
         closest, distances = pairwise_distances_argmin_min(X_new_scaled, centroids_matrix)
@@ -344,7 +372,9 @@ def find_url_position_in_dendrogram(url):
             'pattern_style': pattern_style,
             'pattern_icon': pattern_icon,
             # Pass the original unscaled features for the radar chart function
-            'raw_features': feats
+            'raw_features': feats,
+            # Pass the scaled features for t-SNE mapping
+            'scaled_features': X_new_scaled.tolist()
         }
 
     except Exception as e:
