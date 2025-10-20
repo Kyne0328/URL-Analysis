@@ -57,7 +57,7 @@ def train_model():
         clusters_subset = fcluster(linkage_matrix, t=10, criterion="distance")
 
         # Assign all samples to nearest centroids
-        unique_clusters = np.unique(clusters_subset, return_counts=True)
+        unique_clusters, counts = np.unique(clusters_subset, return_counts=True)
         print(f"Found {len(unique_clusters)} initial clusters.")
         cluster_centroids = {c: X_clustering[clusters_subset == c].mean(axis=0) for c in unique_clusters}
 
@@ -91,7 +91,12 @@ def train_model():
                 'purity': float(purity),
                 'majority_class': majority_class
             }
+        # Calculate and print the average cluster purity
+        all_purities = [stats['purity'] for stats in cluster_stats.values()]
+        average_purity = np.mean(all_purities) if all_purities else 0
+
         print("Cluster statistics calculated.")
+        print(f"    - Average Cluster Purity: {average_purity:.2%}")
 
         # Calculate adaptive thresholds per cluster
         adaptive_thresholds = {}
