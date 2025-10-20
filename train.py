@@ -17,6 +17,9 @@ def train_model():
     try:
         # Load and clean dataset
         df = pd.read_csv("URL dataset.csv")
+        df = df.rename(columns={"URL": "url", "Url": "url", "type": "label", "Type": "label"})
+        if "label" not in df.columns: df["label"] = "unknown"
+        df = df.drop_duplicates(subset="url").dropna(subset=["url"])
         print(f"Dataset size: {df.shape}")
 
         # Create balanced training sample
